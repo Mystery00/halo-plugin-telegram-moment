@@ -1,4 +1,3 @@
-import com.github.gradle.node.NodeExtension
 import com.github.gradle.node.pnpm.task.PnpmTask
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
