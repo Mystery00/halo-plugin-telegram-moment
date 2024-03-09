@@ -24,6 +24,8 @@ dependencies {
     implementation(platform("run.halo.tools.platform:plugin:2.11.0-SNAPSHOT"))
     compileOnly("run.halo.app:api")
 
+    implementation("dev.inmo:tgbotapi:10.1.1")
+
     testImplementation("run.halo.app:api")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
