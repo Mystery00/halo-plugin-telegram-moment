@@ -18,3 +18,5 @@ spec:
   license:
     - name: "GPL-3.0"
       url: "https://github.com/Mystery00/halo-plugin-telegram-moment/blob/main/LICENSE"
+  settingName: "plugin-telegram-moment-settings"
+  configMapName: "plugin-telegram-moment-settings"
