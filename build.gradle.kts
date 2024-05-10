@@ -47,6 +47,11 @@ node {
 
 tasks.register("buildFrontend", PnpmTask::class.java) {
     args.add("build")
+    dependsOn("installDepsForUI")
+}
+
+tasks.register("installDepsForUI", PnpmTask::class.java) {
+    args.add("install")
 }
 
 tasks.getByName<JavaCompile>("compileJava").dependsOn(tasks.getByName("buildFrontend"))
