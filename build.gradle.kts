@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.9.22"
     id("com.github.node-gradle.node") version "7.0.2"
-    id("run.halo.plugin.devtools") version "0.0.7"
+    id("run.halo.plugin.devtools") version "0.0.9"
 }
 
 group = "run.halo.starter"
@@ -57,5 +57,5 @@ tasks.register("installDepsForUI", PnpmTask::class.java) {
 tasks.getByName<JavaCompile>("compileJava").dependsOn(tasks.getByName("buildFrontend"))
 
 halo {
-    version = "2.12.0"
+    version = "2.11"
 }
