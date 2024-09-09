@@ -4,25 +4,28 @@ metadata:
   name: plugin-telegram-moment-settings
 spec:
   forms:
-    - group: telegram
-      label: 设置
+    - group: base
+      label: 基本设置
       formSchema:
+        - $formkit: select
+          name: enabled
+          label: 全局启用开关
+          value: false
+          options:
+            - label: 是
+              value: true
+            - label: 否
+              value: false
         - $formkit: text
           label: Telegram Bot Token
           name: botToken
           validation: required
-        - $formkit: text
-          label: Telegram 接入地址
-          name: apiUrl
-          validation: required
-          value: https://api.telegram.org
-          help: 如果不知道如何填写，请保持默认值
     - group: channel
       label: 频道设置
       formSchema:
         - $formkit: select
           name: enabled
-          label: 全局启用开关
+          label: 频道启用开关
           options:
             - label: 是
               value: true
@@ -31,7 +34,7 @@ spec:
         - $formkit: repeater
           name: idList
           label: 频道id列表
-          value: [ ]
+          value: []
           addButton: true
           addLabel: 添加频道id
           upControl: false
