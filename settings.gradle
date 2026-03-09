@@ -3,4 +3,5 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-rootProject.name = 'halo-plugin-telegram-moment'
+rootProject.name = 'plugin-telegram-moment'
+include 'ui'

@@ -1,20 +1,22 @@
+# Refer https://docs.halo.run/developer-guide/plugin/basics/manifest
+
 apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
-  # The name defines how the plugin is invoked,A unique name
-  name: HaloPluginTelegramMoment
+  # The name defines how the plugin is invoked, A unique name
+  name: telegram-moment
 spec:
   enabled: true
-  requires: ">=2.17.0"
+  requires: ">=2.22.0"
   author:
     name: Mystery0
-    website: https://github.com/Mystery00
+    website: https://github.com/Mystery0
   logo: logo.png
-  homepage: https://github.com/Mystery00/halo-plugin-telegram-moment
-  displayName: "Telegram频道同步助手"
-  description: "将Telegram指定频道的消息同步到Halo的瞬间中"
+  homepage: https://github.com/Mystery0/telegram-moment#readme
+  repo: https://github.com/Mystery0/telegram-moment
+  issues: https://github.com/Mystery0/telegram-moment/issues
+  displayName: "telegram-moment"
+  description: "telegram-moment - Halo 插件"
   license:
     - name: "GPL-3.0"
-      url: "https://github.com/Mystery00/halo-plugin-telegram-moment/blob/main/LICENSE"
-  settingName: "plugin-telegram-moment-settings"
-  configMapName: "plugin-telegram-moment-settings-configmap"
+      url: "https://github.com/Mystery0/telegram-moment/blob/main/LICENSE"
