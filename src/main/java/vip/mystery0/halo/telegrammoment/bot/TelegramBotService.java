@@ -26,11 +26,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class TelegramBotService {
 
     private static final String CONFIG_MAP_NAME = "telegram-moment-configmap";
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final ReactiveExtensionClient extensionClient;
     private final MessageHandler messageHandler;
     private final MediaGroupAggregator mediaGroupAggregator;
-    private final ObjectMapper objectMapper;
 
     private TelegramBotsLongPollingApplication botApplication;
     private OkHttpTelegramClient telegramClient;

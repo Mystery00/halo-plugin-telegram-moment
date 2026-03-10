@@ -21,8 +21,9 @@ import java.util.*;
 @RequiredArgsConstructor
 public class MomentPublisher {
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     private final ReactiveExtensionClient extensionClient;
-    private final ObjectMapper objectMapper;
 
     private static final DateTimeFormatter RELEASE_TIME_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
