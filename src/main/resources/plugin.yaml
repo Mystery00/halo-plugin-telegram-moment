@@ -14,6 +14,8 @@ spec:
   issues: https://github.com/Mystery0/telegram-moment/issues
   displayName: "Telegram Moment"
   description: "将 Telegram 频道/私聊消息自动发布为 Halo 瞬间"
+  settingName: "telegram-moment-setting"
+  configMapName: "telegram-moment-configmap"
   license:
     - name: "GPL-3.0"
       url: "https://github.com/Mystery0/telegram-moment/blob/main/LICENSE"
