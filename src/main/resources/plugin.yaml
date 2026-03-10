@@ -1,9 +1,6 @@
-# Refer https://docs.halo.run/developer-guide/plugin/basics/manifest
-
 apiVersion: plugin.halo.run/v1alpha1
 kind: Plugin
 metadata:
-  # The name defines how the plugin is invoked, A unique name
   name: telegram-moment
 spec:
   enabled: true
@@ -15,8 +12,8 @@ spec:
   homepage: https://github.com/Mystery0/telegram-moment#readme
   repo: https://github.com/Mystery0/telegram-moment
   issues: https://github.com/Mystery0/telegram-moment/issues
-  displayName: "telegram-moment"
-  description: "telegram-moment - Halo 插件"
+  displayName: "Telegram Moment"
+  description: "将 Telegram 频道/私聊消息自动发布为 Halo 瞬间"
   license:
     - name: "GPL-3.0"
       url: "https://github.com/Mystery0/telegram-moment/blob/main/LICENSE"

@@ -1,0 +1,53 @@
+apiVersion: v1alpha1
+kind: Setting
+metadata:
+  name: telegram-moment-setting
+spec:
+  forms:
+    - group: bot
+      label: Bot 配置
+      formSchema:
+        - $formkit: text
+          name: botToken
+          label: Bot Token
+          required: true
+        - $formkit: text
+          name: apiEndpoint
+          label: API Endpoint（留空使用官方 https://api.telegram.org）
+    - group: channel
+      label: 频道配置
+      formSchema:
+        - $formkit: checkbox
+          name: channelEnabled
+          label: 启用频道消息监听
+          value: true
+        - $formkit: text
+          name: channelId
+          label: 频道 Chat ID（留空监听所有频道）
+        - $formkit: text
+          name: channelFilter
+          label: 屏蔽标签（逗号分隔的 hashtag，含该标签的消息将被跳过）
+    - group: private
+      label: 私聊配置
+      formSchema:
+        - $formkit: checkbox
+          name: privateEnabled
+          label: 启用私聊消息监听
+          value: false
+        - $formkit: text
+          name: privateSenderId
+          label: 允许的发送者 Chat ID（留空不限制）
+    - group: storage
+      label: 附件存储
+      formSchema:
+        - $formkit: text
+          name: storagePolicy
+          label: 存储策略名称
+          required: true
+        - $formkit: text
+          name: storageGroup
+          label: 附件分组名称（留空使用默认）
+        - $formkit: number
+          name: mediaDelaySeconds
+          label: 媒体组聚合延迟秒数（默认 3）
+          value: 3
