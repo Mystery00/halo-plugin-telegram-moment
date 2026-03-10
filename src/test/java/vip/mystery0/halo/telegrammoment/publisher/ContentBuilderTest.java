@@ -91,4 +91,39 @@ class ContentBuilderTest {
         assertThat(r.getHtml()).isEmpty();
         assertThat(r.getTags()).isEmpty();
     }
+
+    @Test
+    void underlineEntity_wrappedInU() {
+        MessageEntity entity = MessageEntity.builder()
+                .type("underline").offset(0).length(5).build();
+        ContentResult r = ContentBuilder.build("Hello World", List.of(entity));
+        assertThat(r.getHtml()).contains("<u>Hello</u>");
+    }
+
+    @Test
+    void strikethroughEntity_wrappedInS() {
+        MessageEntity entity = MessageEntity.builder()
+                .type("strikethrough").offset(0).length(5).build();
+        ContentResult r = ContentBuilder.build("Hello World", List.of(entity));
+        assertThat(r.getHtml()).contains("<s>Hello</s>");
+    }
+
+    @Test
+    void preEntity_wrappedInPreCode() {
+        MessageEntity entity = MessageEntity.builder()
+                .type("pre").offset(0).length(3).build();
+        ContentResult r = ContentBuilder.build("foo bar", List.of(entity));
+        assertThat(r.getHtml()).contains("<pre><code>foo</code></pre>");
+    }
+
+    @Test
+    void emojiBeforeEntity_utf16OffsetCorrect() {
+        // "😀" 是 U+1F600，占 2 个 UTF-16 code unit
+        // 文本："😀 #java" → #java 的 UTF-16 offset 为 3
+        MessageEntity entity = MessageEntity.builder()
+                .type("hashtag").offset(3).length(5).build();
+        ContentResult r = ContentBuilder.build("😀 #java", List.of(entity));
+        assertThat(r.getTags()).containsExactly("java");
+        assertThat(r.getHtml()).contains("#java");
+    }
 }

@@ -5,7 +5,6 @@ import org.telegram.telegrambots.meta.api.objects.MessageEntity;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -19,8 +18,11 @@ public class ContentBuilder {
 
     /**
      * 将 Telegram 消息文本和 Entity 列表转换为 HTML 及标签列表。
+     * <p>
+     * Telegram Bot API 规定 offset/length 以 UTF-16 code unit 计数，
+     * 与 Java String.charAt() 索引一致，直接使用 String.substring() 即可正确处理。
      *
-     * @param text     消息原始文本（Unicode）
+     * @param text     消息原始文本
      * @param entities MessageEntity 列表
      * @return ContentResult 包含 html 和 tags
      */
@@ -29,29 +31,27 @@ public class ContentBuilder {
             return new ContentResult("", List.of());
         }
 
-        // 只保留白名单内的 entity
+        // 只保留白名单内的 entity，并按 offset 排序
         List<MessageEntity> filtered = entities.stream()
                 .filter(e -> ALLOWED_TYPES.contains(e.getType()))
                 .sorted((a, b) -> Integer.compare(a.getOffset(), b.getOffset()))
                 .toList();
 
         List<String> tags = new ArrayList<>();
-        // 使用 rune（Unicode codepoint）数组，与 Telegram 的 offset/length 保持一致
-        int[] codePoints = text.codePoints().toArray();
-
         StringBuilder sb = new StringBuilder();
-        int cursor = 0;
+        int cursor = 0; // UTF-16 索引
 
         for (MessageEntity entity : filtered) {
-            int start = entity.getOffset();
-            int end = entity.getOffset() + entity.getLength();
+            int start = entity.getOffset();          // UTF-16 offset
+            int end = start + entity.getLength();    // UTF-16 end
 
             // entity 之前的普通文本
             if (cursor < start) {
-                appendLines(sb, cpSubstring(codePoints, cursor, start));
+                appendLines(sb, text.substring(cursor, start));
             }
 
-            String entityText = cpSubstring(codePoints, start, end);
+            // String.substring() 直接使用 UTF-16 索引，与 Telegram offset 对应
+            String entityText = text.substring(start, end);
 
             switch (entity.getType()) {
                 case "hashtag" -> {
@@ -76,8 +76,8 @@ public class ContentBuilder {
         }
 
         // 剩余文本
-        if (cursor < codePoints.length) {
-            appendLines(sb, cpSubstring(codePoints, cursor, codePoints.length));
+        if (cursor < text.length()) {
+            appendLines(sb, text.substring(cursor));
         }
 
         return new ContentResult(sb.toString(), List.copyOf(tags));
@@ -92,10 +92,5 @@ public class ContentBuilder {
                 sb.append("<p>").append(line).append("</p>");
             }
         }
-    }
-
-    /** 从 Unicode codepoint 数组中截取子串 */
-    private static String cpSubstring(int[] codePoints, int start, int end) {
-        return new String(Arrays.copyOfRange(codePoints, start, end), 0, end - start);
     }
 }
