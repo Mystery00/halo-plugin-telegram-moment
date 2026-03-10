@@ -1,7 +1,7 @@
 import { definePlugin } from '@halo-dev/ui-shared'
-import HomeView from './views/HomeView.vue'
 import { IconPlug } from '@halo-dev/components'
 import { markRaw } from 'vue'
+import HomeView from './views/HomeView.vue'
 
 export default definePlugin({
   components: {},
@@ -9,15 +9,15 @@ export default definePlugin({
     {
       parentName: 'Root',
       route: {
-        path: '/example',
-        name: 'Example',
+        path: '/telegram-moment',
+        name: 'TelegramMoment',
         component: HomeView,
         meta: {
-          title: '示例页面',
+          title: 'Telegram Moment',
           searchable: true,
           menu: {
-            name: '示例页面',
-            group: '示例分组',
+            name: 'Telegram Moment',
+            group: '工具',
             icon: markRaw(IconPlug),
             priority: 0,
           },
@@ -25,5 +25,4 @@ export default definePlugin({
       },
     },
   ],
-  extensionPoints: {},
 })
