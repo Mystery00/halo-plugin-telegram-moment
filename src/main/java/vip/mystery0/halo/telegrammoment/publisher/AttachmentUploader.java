@@ -49,8 +49,10 @@ public class AttachmentUploader {
             String fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
 
             // 2. 下载文件流
-            InputStream fileStream = client.downloadFileAsStream(filePath);
-            byte[] fileBytes = fileStream.readAllBytes();
+            byte[] fileBytes;
+            try (InputStream fileStream = client.downloadFileAsStream(filePath)) {
+                fileBytes = fileStream.readAllBytes();
+            }
 
             // 3. 上传到 Halo
             String mimeType = detectMimeType(fileName);

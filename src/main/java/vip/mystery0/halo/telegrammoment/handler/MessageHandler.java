@@ -70,7 +70,7 @@ public class MessageHandler {
             // 选最高分辨率的图片
             PhotoSize largest = message.getPhoto().stream()
                     .max((a, b) -> Integer.compare(a.getFileSize(), b.getFileSize()))
-                    .orElse(message.getPhoto().get(message.getPhoto().size() - 1));
+                    .orElse(message.getPhoto().getLast());
             uploadSingleMedia(largest.getFileId(), "PHOTO", setting, telegramClient,
                     medium, attachmentNames);
 

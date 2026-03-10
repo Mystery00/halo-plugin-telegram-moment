@@ -92,7 +92,7 @@ public class MediaGroupAggregator {
         List<Message> messages = group.getMessages();
         if (messages.isEmpty()) return;
 
-        Message firstMsg = messages.get(0);
+        Message firstMsg = messages.getFirst();
         String captionText = firstMsg.getCaption() != null ? firstMsg.getCaption() : "";
         List<org.telegram.telegrambots.meta.api.objects.MessageEntity> captionEntities =
                 firstMsg.getCaptionEntities() != null ? firstMsg.getCaptionEntities() : List.of();
@@ -107,7 +107,7 @@ public class MediaGroupAggregator {
             // 选最高分辨率的图片（FileSize 最大的）
             PhotoSize largest = msg.getPhoto().stream()
                     .max((a, b) -> Integer.compare(a.getFileSize(), b.getFileSize()))
-                    .orElse(msg.getPhoto().get(msg.getPhoto().size() - 1));
+                    .orElse(msg.getPhoto().getLast());
 
             try {
                 AttachmentUploadResult result = attachmentUploader.upload(
