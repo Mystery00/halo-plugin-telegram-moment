@@ -1,19 +1,18 @@
 package vip.mystery0.halo.telegrammoment;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import run.halo.app.plugin.BasePlugin;
 import run.halo.app.plugin.PluginContext;
+import vip.mystery0.halo.telegrammoment.bot.TelegramBotService;
 
-/**
- * <p>Plugin main class to manage the lifecycle of the plugin.</p>
- * <p>This class must be public and have a public constructor.</p>
- * <p>Only one main class extending {@link BasePlugin} is allowed per plugin.</p>
- *
- * @author Mystery0
- * @since 1.0.0
- */
+@Slf4j
 @Component
 public class TelegramMomentPlugin extends BasePlugin {
+
+    @Autowired
+    private TelegramBotService botService;
 
     public TelegramMomentPlugin(PluginContext pluginContext) {
         super(pluginContext);
@@ -21,11 +20,13 @@ public class TelegramMomentPlugin extends BasePlugin {
 
     @Override
     public void start() {
-        System.out.println("插件启动成功！");
+        log.info("Telegram Moment 插件启动");
+        botService.startBot();
     }
 
     @Override
     public void stop() {
-        System.out.println("插件停止！");
+        log.info("Telegram Moment 插件停止");
+        botService.stopBot();
     }
 }
