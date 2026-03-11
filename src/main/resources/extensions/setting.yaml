@@ -18,6 +18,10 @@ spec:
           name: debugMode
           label: 调试模式（开启后日志同时打印到控制台 stdout）
           value: false
+        - $formkit: checkbox
+          name: enableLogBuffer
+          label: 启用日志记录（开启后运行日志可在插件页面查看，重启 Bot 后生效）
+          value: false
     - group: channel
       label: 频道配置
       formSchema:

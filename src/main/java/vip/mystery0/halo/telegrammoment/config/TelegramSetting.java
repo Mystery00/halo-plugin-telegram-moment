@@ -11,6 +11,7 @@ public class TelegramSetting {
     private String botToken = "";
     private String apiEndpoint = "";
     private boolean debugMode = false;
+    private boolean enableLogBuffer = false;
 
     // --- channel group ---
     private boolean channelEnabled = true;

@@ -1,14 +1,16 @@
 package vip.mystery0.halo.telegrammoment.bot;
 
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-
-import java.util.Map;
+import vip.mystery0.halo.telegrammoment.LogBuffer;
 
 @RestController
 @RequestMapping("/apis/telegram-moment/v1alpha1/bot")
@@ -16,6 +18,7 @@ import java.util.Map;
 public class BotController {
 
     private final TelegramBotService botService;
+    private final LogBuffer logBuffer;
 
     @GetMapping("/status")
     public Mono<Map<String, Object>> status() {
@@ -30,5 +33,16 @@ public class BotController {
         return Mono.fromRunnable(botService::restartBot)
             .subscribeOn(Schedulers.boundedElastic())
             .thenReturn(Map.of("message", "Bot 正在重启，请稍后刷新状态"));
+    }
+
+    @GetMapping("/logs")
+    public Mono<List<LogBuffer.LogEntry>> getLogs() {
+        return Mono.just(logBuffer.getLogs());
+    }
+
+    @DeleteMapping("/logs")
+    public Mono<Void> clearLogs() {
+        logBuffer.clear();
+        return Mono.empty();
     }
 }

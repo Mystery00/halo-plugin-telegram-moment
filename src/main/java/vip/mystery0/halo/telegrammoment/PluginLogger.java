@@ -1,17 +1,17 @@
 package vip.mystery0.halo.telegrammoment;
 
-import org.slf4j.Logger;
-
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.slf4j.Logger;
 
 /**
  * 插件统一日志工具。
  * 调试模式开启时，日志同时通过 System.out/err 打印到控制台；
- * 调试模式关闭时，仅通过 SLF4J Logger 输出。
+ * 日志记录开启时，日志同时写入内存缓冲区供插件页面展示。
  */
 public final class PluginLogger {
 
     private static final AtomicBoolean debugMode = new AtomicBoolean(false);
+    private static volatile LogBuffer logBuffer;
 
     private PluginLogger() {
     }
@@ -24,7 +24,13 @@ public final class PluginLogger {
         return debugMode.get();
     }
 
+    /** 由插件生命周期管理，启动时注入，停止时置 null */
+    public static void setLogBuffer(LogBuffer lb) {
+        logBuffer = lb;
+    }
+
     public static void info(Logger log, String msg, Object... args) {
+        record("INFO", log, msg, args);
         if (debugMode.get()) {
             System.out.println("[INFO][" + shortName(log) + "] " + format(msg, args));
         }
@@ -32,6 +38,7 @@ public final class PluginLogger {
     }
 
     public static void warn(Logger log, String msg, Object... args) {
+        record("WARN", log, msg, args);
         if (debugMode.get()) {
             System.out.println("[WARN][" + shortName(log) + "] " + format(msg, args));
             printThrowable(System.out, args);
@@ -40,6 +47,7 @@ public final class PluginLogger {
     }
 
     public static void error(Logger log, String msg, Object... args) {
+        record("ERROR", log, msg, args);
         if (debugMode.get()) {
             System.err.println("[ERROR][" + shortName(log) + "] " + format(msg, args));
             printThrowable(System.err, args);
@@ -48,6 +56,7 @@ public final class PluginLogger {
     }
 
     public static void debug(Logger log, String msg, Object... args) {
+        record("DEBUG", log, msg, args);
         if (debugMode.get()) {
             System.out.println("[DEBUG][" + shortName(log) + "] " + format(msg, args));
         }
@@ -55,6 +64,13 @@ public final class PluginLogger {
     }
 
     // ---- 私有方法 ----
+
+    private static void record(String level, Logger log, String msg, Object[] args) {
+        LogBuffer lb = logBuffer;
+        if (lb != null && lb.isEnabled()) {
+            lb.add(level, shortName(log), format(msg, args));
+        }
+    }
 
     /** 取 logger 名称的最后一段（类名），避免日志前缀过长 */
     private static String shortName(Logger log) {

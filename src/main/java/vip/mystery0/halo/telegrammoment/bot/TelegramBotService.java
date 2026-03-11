@@ -17,6 +17,7 @@ import reactor.core.scheduler.Schedulers;
 import run.halo.app.core.extension.User;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ReactiveExtensionClient;
+import vip.mystery0.halo.telegrammoment.LogBuffer;
 import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
 import vip.mystery0.halo.telegrammoment.handler.MediaGroupAggregator;
@@ -33,6 +34,7 @@ public class TelegramBotService {
     private final ReactiveExtensionClient extensionClient;
     private final MessageHandler messageHandler;
     private final MediaGroupAggregator mediaGroupAggregator;
+    private final LogBuffer logBuffer;
 
     private TelegramBotsLongPollingApplication botApplication;
     private OkHttpTelegramClient telegramClient;
@@ -56,6 +58,7 @@ public class TelegramBotService {
     public synchronized void startBot() {
         TelegramSetting setting = readSetting();
         PluginLogger.setDebugMode(setting.isDebugMode());
+        logBuffer.setEnabled(setting.isEnableLogBuffer());
         if (!setting.hasValidToken()) {
             PluginLogger.warn(log, "Bot Token 未配置，跳过 Bot 启动。请在配置页面设置 Bot Token 后点击「重启 Bot」。");
             return;
@@ -194,6 +197,7 @@ public class TelegramBotService {
                     setting.setBotToken(str(map, "botToken"));
                     setting.setApiEndpoint(str(map, "apiEndpoint"));
                     setting.setDebugMode(bool(map, "debugMode", false));
+                    setting.setEnableLogBuffer(bool(map, "enableLogBuffer", false));
                 }
                 case "channel" -> {
                     setting.setChannelEnabled(bool(map, "channelEnabled", true));
