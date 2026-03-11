@@ -10,8 +10,8 @@ class ContentBuilderTest {
     @Test
     void plainText_wrapsEachLineInParagraph() {
         ContentResult r = ContentBuilder.build("Hello\nWorld", List.of());
-        assertThat(r.getHtml()).isEqualTo("<p>Hello</p><p>World</p>");
-        assertThat(r.getTags()).isEmpty();
+        assertThat(r.html()).isEqualTo("<p>Hello</p><p>World</p>");
+        assertThat(r.tags()).isEmpty();
     }
 
     @Test
@@ -22,9 +22,9 @@ class ContentBuilderTest {
                 .length(5) // "#java"
                 .build();
         ContentResult r = ContentBuilder.build("#java 示例", List.of(entity));
-        assertThat(r.getTags()).containsExactly("java");
-        assertThat(r.getHtml()).contains("<a class=\"tag\"");
-        assertThat(r.getHtml()).contains("#java");
+        assertThat(r.tags()).containsExactly("java");
+        assertThat(r.html()).contains("<a class=\"tag\"");
+        assertThat(r.html()).contains("#java");
     }
 
     @Test
@@ -35,7 +35,7 @@ class ContentBuilderTest {
                 .length(5) // "Hello"
                 .build();
         ContentResult r = ContentBuilder.build("Hello World", List.of(entity));
-        assertThat(r.getHtml()).contains("<strong>Hello</strong>");
+        assertThat(r.html()).contains("<strong>Hello</strong>");
     }
 
     @Test
@@ -46,7 +46,7 @@ class ContentBuilderTest {
                 .length(5)
                 .build();
         ContentResult r = ContentBuilder.build("Hello World", List.of(entity));
-        assertThat(r.getHtml()).contains("<em>Hello</em>");
+        assertThat(r.html()).contains("<em>Hello</em>");
     }
 
     @Test
@@ -57,7 +57,7 @@ class ContentBuilderTest {
                 .length(3)
                 .build();
         ContentResult r = ContentBuilder.build("foo bar", List.of(entity));
-        assertThat(r.getHtml()).contains("<code>foo</code>");
+        assertThat(r.html()).contains("<code>foo</code>");
     }
 
     @Test
@@ -69,7 +69,7 @@ class ContentBuilderTest {
                 .url("https://example.com")
                 .build();
         ContentResult r = ContentBuilder.build("link text", List.of(entity));
-        assertThat(r.getHtml()).contains("<a href=\"https://example.com\">link</a>");
+        assertThat(r.html()).contains("<a href=\"https://example.com\">link</a>");
     }
 
     @Test
@@ -81,15 +81,15 @@ class ContentBuilderTest {
                 .build();
         ContentResult r = ContentBuilder.build("@user text", List.of(entity));
         // mention 类型不处理，整段文字按普通文本输出
-        assertThat(r.getHtml()).doesNotContain("<a");
-        assertThat(r.getTags()).isEmpty();
+        assertThat(r.html()).doesNotContain("<a");
+        assertThat(r.tags()).isEmpty();
     }
 
     @Test
     void emptyContent_returnsEmptyHtml() {
         ContentResult r = ContentBuilder.build("", List.of());
-        assertThat(r.getHtml()).isEmpty();
-        assertThat(r.getTags()).isEmpty();
+        assertThat(r.html()).isEmpty();
+        assertThat(r.tags()).isEmpty();
     }
 
     @Test
@@ -97,7 +97,7 @@ class ContentBuilderTest {
         MessageEntity entity = MessageEntity.builder()
                 .type("underline").offset(0).length(5).build();
         ContentResult r = ContentBuilder.build("Hello World", List.of(entity));
-        assertThat(r.getHtml()).contains("<u>Hello</u>");
+        assertThat(r.html()).contains("<u>Hello</u>");
     }
 
     @Test
@@ -105,7 +105,7 @@ class ContentBuilderTest {
         MessageEntity entity = MessageEntity.builder()
                 .type("strikethrough").offset(0).length(5).build();
         ContentResult r = ContentBuilder.build("Hello World", List.of(entity));
-        assertThat(r.getHtml()).contains("<s>Hello</s>");
+        assertThat(r.html()).contains("<s>Hello</s>");
     }
 
     @Test
@@ -113,7 +113,7 @@ class ContentBuilderTest {
         MessageEntity entity = MessageEntity.builder()
                 .type("pre").offset(0).length(3).build();
         ContentResult r = ContentBuilder.build("foo bar", List.of(entity));
-        assertThat(r.getHtml()).contains("<pre><code>foo</code></pre>");
+        assertThat(r.html()).contains("<pre><code>foo</code></pre>");
     }
 
     @Test
@@ -123,7 +123,7 @@ class ContentBuilderTest {
         MessageEntity entity = MessageEntity.builder()
                 .type("hashtag").offset(3).length(5).build();
         ContentResult r = ContentBuilder.build("😀 #java", List.of(entity));
-        assertThat(r.getTags()).containsExactly("java");
-        assertThat(r.getHtml()).contains("#java");
+        assertThat(r.tags()).containsExactly("java");
+        assertThat(r.html()).contains("#java");
     }
 }

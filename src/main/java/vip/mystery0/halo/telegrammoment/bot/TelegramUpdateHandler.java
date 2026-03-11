@@ -26,14 +26,11 @@ public class TelegramUpdateHandler implements LongPollingSingleThreadUpdateConsu
             if (update.hasChannelPost()) {
                 handleChannelPost(update.getChannelPost());
             } else if (update.hasEditedChannelPost()) {
-                messageHandler.handleMessage(update.getEditedChannelPost(),
-                        true, true, setting, telegramClient);
+                messageHandler.handleMessage(update.getEditedChannelPost(), true, true, setting, telegramClient);
             } else if (update.hasMessage()) {
-                messageHandler.handleMessage(update.getMessage(),
-                        false, false, setting, telegramClient);
+                messageHandler.handleMessage(update.getMessage(), false, false, setting, telegramClient);
             } else if (update.hasEditedMessage()) {
-                messageHandler.handleMessage(update.getEditedMessage(),
-                        true, false, setting, telegramClient);
+                messageHandler.handleMessage(update.getEditedMessage(), true, false, setting, telegramClient);
             }
         } catch (Exception e) {
             log.error("处理 Telegram Update 异常，updateId={}", update.getUpdateId(), e);

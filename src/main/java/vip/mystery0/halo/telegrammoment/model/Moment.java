@@ -1,56 +1,139 @@
 package vip.mystery0.halo.telegrammoment.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
+
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import run.halo.app.extension.AbstractExtension;
 import run.halo.app.extension.GVK;
 
-import java.util.ArrayList;
-import java.util.List;
-
+@GVK(
+    group = "moment.halo.run",
+    version = "v1alpha1",
+    kind = "Moment",
+    plural = "moments",
+    singular = "moment"
+)
 @Data
 @EqualsAndHashCode(callSuper = true)
-@GVK(group = "moment.halo.run",
-        version = "v1alpha1",
-        kind = "Moment",
-        plural = "moments",
-        singular = "moment")
+@ToString(callSuper = true)
 public class Moment extends AbstractExtension {
+    public static final String REQUIRE_SYNC_ON_STARTUP_INDEX_NAME = "requireSyncOnStartup";
 
-    @JsonProperty("spec")
-    private MomentSpec spec = new MomentSpec();
+    @Schema(requiredMode = REQUIRED)
+    private MomentSpec spec;
+
+    private Status status;
 
     @Data
     public static class MomentSpec {
-        private Content content = new Content();
-        /** ISO 8601 格式，例如 "2024-01-01T00:00:00.000Z" */
-        private String releaseTime;
-        private List<String> tags = new ArrayList<>();
-        private String visible = "PUBLIC";
-        private String owner = "";
+
+        @Schema(requiredMode = REQUIRED)
+        private MomentContent content;
+
+        @Schema(description = "Release timestamp. This field can be customized by owner")
+        private Instant releaseTime;
+
+        @Schema(description = "Visible indicates when to show publicly. Default is public",
+            defaultValue = "PUBLIC")
+        private MomentVisible visible;
+
+        @Schema(requiredMode = REQUIRED, description = "Owner of the moment")
+        private String owner;
+
+        @Schema(description = "Tags of the moment")
+        private Set<String> tags;
+
+        @Schema(defaultValue = "false")
+        private Boolean approved;
+
+        private Instant approvedTime;
     }
 
     @Data
-    public static class Content {
-        private String raw = "";
-        private String html = "";
-        private List<MediumItem> medium = new ArrayList<>();
+    @Schema(name = "MomentStatus")
+    public static class Status {
+        private long observedVersion;
+
+        private String permalink;
     }
 
     @Data
-    public static class MediumItem {
-        /** "PHOTO" 或 "VIDEO" */
-        private String type;
-        /** Halo 附件的 permalink URL */
+    public static class MomentContent {
+
+        @Schema(description = "Raw of content")
+        private String raw;
+
+        @Schema(description = "Rendered result with HTML format")
+        private String html;
+
+        @ArraySchema(
+            uniqueItems = true,
+            arraySchema = @Schema(description = "Medium of moment"),
+            schema = @Schema(description = "Media item of moment"))
+        private List<MomentMedia> medium;
+    }
+
+    @Data
+    public static class MomentMedia {
+
+        @Schema(description = "Type of media")
+        private MomentMediaType type;
+
+        @Schema(description = "External URL of media")
         private String url;
-        /** MIME 类型，如 "image/jpeg" */
-        @JsonProperty("originType")
+
+        @Schema(description = "Origin type of media.")
         private String originType;
     }
 
-    /** 注解键常量 */
-    public static final String ANNOTATION_MESSAGE_ID = "messageId";
-    public static final String ANNOTATION_CHAT_ID = "chatId";
-    public static final String ANNOTATION_ATTACHMENT_NAMES = "attachmentNames";
+    public enum MomentMediaType {
+        PHOTO,
+        VIDEO,
+        POST,
+        AUDIO,
+        // TODO Might add more types here in the future
+    }
+
+    public enum MomentVisible {
+        /**
+         * Public is default visible of moment.
+         */
+        PUBLIC,
+
+        /**
+         * Private visible is only for view for self.
+         */
+        PRIVATE;
+        // TODO Might add more visibles here in the future.
+
+        /**
+         * Convert value string to {@link MomentVisible}.
+         *
+         * @param value enum value string
+         * @return {@link MomentVisible} if found, otherwise null
+         */
+        public static MomentVisible from(String value) {
+            for (MomentVisible visible : MomentVisible.values()) {
+                if (visible.name().equalsIgnoreCase(value)) {
+                    return visible;
+                }
+            }
+            return null;
+        }
+    }
+
+    public boolean isApproved() {
+        return Boolean.TRUE.equals(this.getSpec().getApproved());
+    }
+
+    public boolean isPubliclyVisible() {
+        return MomentVisible.PUBLIC.equals(this.getSpec().getVisible());
+    }
 }

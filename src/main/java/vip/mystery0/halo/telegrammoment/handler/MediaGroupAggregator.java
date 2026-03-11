@@ -16,6 +16,7 @@ import vip.mystery0.halo.telegrammoment.model.Moment;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -33,7 +34,9 @@ public class MediaGroupAggregator {
     private final ConcurrentHashMap<String, PendingMediaGroup> pendingGroups = new ConcurrentHashMap<>();
     private ScheduledExecutorService scheduler;
 
-    /** 由 TelegramBotService 在 Bot 启动时调用 */
+    /**
+     * 由 TelegramBotService 在 Bot 启动时调用
+     */
     public void start(TelegramSetting setting, OkHttpTelegramClient telegramClient) {
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "media-group-aggregator");
@@ -41,13 +44,15 @@ public class MediaGroupAggregator {
             return t;
         });
         scheduler.scheduleAtFixedRate(
-                () -> drainReady(setting, telegramClient),
-                5, 5, TimeUnit.SECONDS
+            () -> drainReady(setting, telegramClient),
+            5, 5, TimeUnit.SECONDS
         );
         log.info("MediaGroupAggregator 已启动");
     }
 
-    /** 由 TelegramBotService 在 Bot 停止时调用 */
+    /**
+     * 由 TelegramBotService 在 Bot 停止时调用
+     */
     public void stop() {
         if (scheduler != null && !scheduler.isShutdown()) {
             scheduler.shutdownNow();
@@ -60,8 +65,7 @@ public class MediaGroupAggregator {
      * 将一条图片消息加入对应的媒体组。
      */
     public void add(String albumId, Message message, boolean isPrivate, TelegramSetting setting) {
-        long executeTimeMs = System.currentTimeMillis()
-                + setting.getMediaDelaySeconds() * 1000L;
+        long executeTimeMs = System.currentTimeMillis() + setting.getMediaDelaySeconds() * 1000L;
         pendingGroups.compute(albumId, (key, existing) -> {
             if (existing == null) {
                 PendingMediaGroup group = new PendingMediaGroup(executeTimeMs, isPrivate);
@@ -76,7 +80,9 @@ public class MediaGroupAggregator {
     private void drainReady(TelegramSetting setting, OkHttpTelegramClient telegramClient) {
         pendingGroups.entrySet().removeIf(entry -> {
             PendingMediaGroup group = entry.getValue();
-            if (!group.isReady()) return false;
+            if (!group.isReady()) {
+                return false;
+            }
 
             try {
                 processGroup(group, setting, telegramClient);
@@ -88,32 +94,36 @@ public class MediaGroupAggregator {
     }
 
     private void processGroup(PendingMediaGroup group, TelegramSetting setting,
-                               OkHttpTelegramClient telegramClient) {
+        OkHttpTelegramClient telegramClient) {
         List<Message> messages = group.getMessages();
-        if (messages.isEmpty()) return;
+        if (messages.isEmpty()) {
+            return;
+        }
 
         Message firstMsg = messages.getFirst();
         String captionText = firstMsg.getCaption() != null ? firstMsg.getCaption() : "";
         List<org.telegram.telegrambots.meta.api.objects.MessageEntity> captionEntities =
-                firstMsg.getCaptionEntities() != null ? firstMsg.getCaptionEntities() : List.of();
+            firstMsg.getCaptionEntities() != null ? firstMsg.getCaptionEntities() : List.of();
 
         ContentResult contentResult = ContentBuilder.build(captionText, captionEntities);
 
-        List<Moment.MediumItem> medium = new ArrayList<>();
+        List<Moment.MomentMedia> medium = new ArrayList<>();
         List<String> attachmentNames = new ArrayList<>();
 
         for (Message msg : messages) {
-            if (msg.getPhoto() == null || msg.getPhoto().isEmpty()) continue;
+            if (msg.getPhoto() == null || msg.getPhoto().isEmpty()) {
+                continue;
+            }
             // 选最高分辨率的图片（FileSize 最大的）
             PhotoSize largest = msg.getPhoto().stream()
-                    .max((a, b) -> Integer.compare(a.getFileSize(), b.getFileSize()))
-                    .orElse(msg.getPhoto().getLast());
+                .max(Comparator.comparingInt(PhotoSize::getFileSize))
+                .orElse(msg.getPhoto().getLast());
 
             try {
-                AttachmentUploadResult result = attachmentUploader.upload(
-                        largest.getFileId(), telegramClient, setting, "PHOTO");
-                Moment.MediumItem item = new Moment.MediumItem();
-                item.setType("PHOTO");
+                AttachmentUploadResult result = attachmentUploader.upload(largest.getFileId(), telegramClient, setting,
+                    Moment.MomentMediaType.PHOTO);
+                Moment.MomentMedia item = new Moment.MomentMedia();
+                item.setType(Moment.MomentMediaType.PHOTO);
                 item.setUrl(result.getPermalink());
                 item.setOriginType(result.getMimeType());
                 medium.add(item);
@@ -124,15 +134,13 @@ public class MediaGroupAggregator {
         }
 
         momentPublisher.publish(
-                contentResult.getHtml(),
-                contentResult.getTags(),
-                medium,
-                attachmentNames,
-                firstMsg.getMessageId(),
-                firstMsg.getChatId(),
-                firstMsg.getDate() != null
-                        ? Instant.ofEpochSecond(firstMsg.getDate())
-                        : Instant.now()
+            contentResult.html(),
+            contentResult.tags(),
+            medium,
+            attachmentNames,
+            firstMsg.getMessageId(),
+            firstMsg.getChatId(),
+            firstMsg.getDate() != null ? Instant.ofEpochSecond(firstMsg.getDate()) : Instant.now()
         );
     }
 }

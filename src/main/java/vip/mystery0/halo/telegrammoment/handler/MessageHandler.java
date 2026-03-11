@@ -17,6 +17,7 @@ import vip.mystery0.halo.telegrammoment.publisher.MomentPublisher;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Slf4j
@@ -31,17 +32,17 @@ public class MessageHandler {
     /**
      * 处理一条消息（新建或编辑）。
      *
-     * @param message         Telegram 消息对象
-     * @param isEdit          true = 编辑已有消息，false = 新消息
-     * @param isChannel       true = 来自频道，false = 来自私聊
-     * @param setting         当前插件配置
-     * @param telegramClient  已初始化的 TelegramClient（用于下载文件）
+     * @param message Telegram 消息对象
+     * @param isEdit true = 编辑已有消息，false = 新消息
+     * @param isChannel true = 来自频道，false = 来自私聊
+     * @param setting 当前插件配置
+     * @param telegramClient 已初始化的 TelegramClient（用于下载文件）
      */
     public void handleMessage(Message message,
-                               boolean isEdit,
-                               boolean isChannel,
-                               TelegramSetting setting,
-                               OkHttpTelegramClient telegramClient) {
+        boolean isEdit,
+        boolean isChannel,
+        TelegramSetting setting,
+        OkHttpTelegramClient telegramClient) {
         // 过滤检查
         if (!checkEnabled(message, isChannel, setting)) {
             return;
@@ -49,45 +50,42 @@ public class MessageHandler {
 
         // 媒体组处理：图片组直接交给聚合器，提前返回
         if (message.getPhoto() != null
-                && message.getMediaGroupId() != null
-                && !isEdit) {
-            mediaGroupAggregator.add(message.getMediaGroupId(), message,
-                    !isChannel, setting);
+            && message.getMediaGroupId() != null
+            && !isEdit) {
+            mediaGroupAggregator.add(message.getMediaGroupId(), message, !isChannel, setting);
             return;
         }
 
         // 构建 Post 数据
         String rawText;
         List<MessageEntity> entities;
-        List<Moment.MediumItem> medium = new ArrayList<>();
+        List<Moment.MomentMedia> medium = new ArrayList<>();
         List<String> attachmentNames = new ArrayList<>();
 
         if (message.getPhoto() != null && !message.getPhoto().isEmpty()) {
             // 单张图片（无 AlbumID 或 isEdit）
             rawText = message.getCaption() != null ? message.getCaption() : "";
-            entities = message.getCaptionEntities() != null
-                    ? message.getCaptionEntities() : List.of();
+            entities = message.getCaptionEntities() != null ? message.getCaptionEntities() : List.of();
             // 选最高分辨率的图片
             PhotoSize largest = message.getPhoto().stream()
-                    .max((a, b) -> Integer.compare(a.getFileSize(), b.getFileSize()))
-                    .orElse(message.getPhoto().getLast());
-            uploadSingleMedia(largest.getFileId(), "PHOTO", setting, telegramClient,
-                    medium, attachmentNames);
+                .max(Comparator.comparingInt(PhotoSize::getFileSize))
+                .orElse(message.getPhoto().getLast());
+            uploadSingleMedia(largest.getFileId(), Moment.MomentMediaType.PHOTO, setting, telegramClient, medium,
+                attachmentNames);
 
         } else if (message.getAnimation() != null) {
             // GIF
             rawText = message.getCaption() != null ? message.getCaption() : "";
             entities = message.getCaptionEntities() != null
-                    ? message.getCaptionEntities() : List.of();
-            uploadSingleMedia(message.getAnimation().getFileId(), "VIDEO", setting, telegramClient,
-                    medium, attachmentNames);
-
+                ? message.getCaptionEntities() : List.of();
+            uploadSingleMedia(message.getAnimation().getFileId(), Moment.MomentMediaType.VIDEO, setting, telegramClient,
+                medium, attachmentNames);
         } else if (message.getSticker() != null) {
             // 贴纸
             rawText = "";
             entities = List.of();
-            uploadSingleMedia(message.getSticker().getFileId(), "PHOTO", setting, telegramClient,
-                    medium, attachmentNames);
+            uploadSingleMedia(message.getSticker().getFileId(), Moment.MomentMediaType.PHOTO, setting, telegramClient,
+                medium, attachmentNames);
 
         } else if (message.getText() != null && !message.getText().isBlank()) {
             // 纯文字
@@ -101,17 +99,15 @@ public class MessageHandler {
 
         ContentResult contentResult = ContentBuilder.build(rawText, entities);
         Instant releaseTime = message.getDate() != null
-                ? Instant.ofEpochSecond(message.getDate())
-                : Instant.now();
+            ? Instant.ofEpochSecond(message.getDate())
+            : Instant.now();
 
         if (isEdit) {
-            momentPublisher.update(contentResult.getHtml(), contentResult.getTags(),
-                    medium, attachmentNames,
-                    message.getMessageId(), message.getChatId(), releaseTime);
+            momentPublisher.update(contentResult.html(), contentResult.tags(), medium, attachmentNames,
+                message.getMessageId(), message.getChatId(), releaseTime);
         } else {
-            momentPublisher.publish(contentResult.getHtml(), contentResult.getTags(),
-                    medium, attachmentNames,
-                    message.getMessageId(), message.getChatId(), releaseTime);
+            momentPublisher.publish(contentResult.html(), contentResult.tags(), medium, attachmentNames,
+                message.getMessageId(), message.getChatId(), releaseTime);
         }
     }
 
@@ -124,7 +120,7 @@ public class MessageHandler {
             return;
         }
         log.info("删除 Moment，messageId={}, chatId={}",
-                targetMessage.getMessageId(), targetMessage.getChatId());
+            targetMessage.getMessageId(), targetMessage.getChatId());
         momentPublisher.delete(targetMessage.getMessageId(), targetMessage.getChatId());
     }
 
@@ -147,7 +143,7 @@ public class MessageHandler {
             }
             // Hashtag 过滤
             String text = message.getText() != null ? message.getText()
-                    : (message.getCaption() != null ? message.getCaption() : "");
+                : (message.getCaption() != null ? message.getCaption() : "");
             for (String filterTag : setting.getChannelFilterList()) {
                 if (text.contains("#" + filterTag)) {
                     log.info("消息含屏蔽标签 #{}，跳过", filterTag);
@@ -173,15 +169,11 @@ public class MessageHandler {
         return true;
     }
 
-    private void uploadSingleMedia(String fileId, String mediaType,
-                                    TelegramSetting setting,
-                                    OkHttpTelegramClient telegramClient,
-                                    List<Moment.MediumItem> medium,
-                                    List<String> attachmentNames) {
+    private void uploadSingleMedia(String fileId, Moment.MomentMediaType mediaType, TelegramSetting setting,
+        OkHttpTelegramClient telegramClient, List<Moment.MomentMedia> medium, List<String> attachmentNames) {
         try {
-            AttachmentUploadResult result = attachmentUploader.upload(
-                    fileId, telegramClient, setting, mediaType);
-            Moment.MediumItem item = new Moment.MediumItem();
+            AttachmentUploadResult result = attachmentUploader.upload(fileId, telegramClient, setting, mediaType);
+            Moment.MomentMedia item = new Moment.MomentMedia();
             item.setType(mediaType);
             item.setUrl(result.getPermalink());
             item.setOriginType(result.getMimeType());

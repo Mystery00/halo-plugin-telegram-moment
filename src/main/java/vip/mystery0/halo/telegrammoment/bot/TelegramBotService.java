@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
@@ -41,7 +42,9 @@ public class TelegramBotService {
     }
 
     public String getBotUsername() {
-        if (telegramClient == null) return null;
+        if (telegramClient == null) {
+            return null;
+        }
         try {
             return telegramClient.execute(GetMe.builder().build()).getUserName();
         } catch (Exception e) {
@@ -65,19 +68,18 @@ public class TelegramBotService {
             // 解析自定义 API 端点，构造 TelegramUrl
             TelegramUrl telegramUrl = buildTelegramUrl(apiEndpoint);
             telegramClient = new OkHttpTelegramClient(
-                    new okhttp3.OkHttpClient(),
-                    setting.getBotToken(),
-                    telegramUrl
+                new OkHttpClient(),
+                setting.getBotToken(),
+                telegramUrl
             );
         } else {
             telegramClient = new OkHttpTelegramClient(
-                    new okhttp3.OkHttpClient(),
-                    setting.getBotToken()
+                new OkHttpClient(),
+                setting.getBotToken()
             );
         }
 
-        TelegramUpdateHandler handler = new TelegramUpdateHandler(
-                messageHandler, setting, telegramClient);
+        TelegramUpdateHandler handler = new TelegramUpdateHandler(messageHandler, setting, telegramClient);
 
         botApplication = new TelegramBotsLongPollingApplication();
         try {
@@ -126,10 +128,10 @@ public class TelegramBotService {
                 port = "https".equalsIgnoreCase(schema) ? 443 : 80;
             }
             return TelegramUrl.builder()
-                    .schema(schema)
-                    .host(host)
-                    .port(port)
-                    .build();
+                .schema(schema)
+                .host(host)
+                .port(port)
+                .build();
         } catch (Exception e) {
             log.warn("解析自定义 API 端点失败，将使用默认端点: {}", apiEndpoint, e);
             return TelegramUrl.DEFAULT_URL;
@@ -139,8 +141,8 @@ public class TelegramBotService {
     private TelegramSetting readSetting() {
         try {
             ConfigMap configMap = extensionClient.fetch(ConfigMap.class, CONFIG_MAP_NAME)
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .block();
+                .subscribeOn(Schedulers.boundedElastic())
+                .block();
             if (configMap == null || configMap.getData() == null) {
                 log.warn("插件配置 ConfigMap 不存在或为空: {}", CONFIG_MAP_NAME);
                 return new TelegramSetting();
@@ -162,9 +164,12 @@ public class TelegramBotService {
     }
 
     private void parseGroup(String json, TelegramSetting setting, String group) {
-        if (json == null || json.isBlank()) return;
+        if (json == null || json.isBlank()) {
+            return;
+        }
         try {
-            Map<String, Object> map = objectMapper.readValue(json, new TypeReference<>() {});
+            Map<String, Object> map = objectMapper.readValue(json, new TypeReference<>() {
+            });
             switch (group) {
                 case "bot" -> {
                     setting.setBotToken(str(map, "botToken"));
@@ -200,7 +205,9 @@ public class TelegramBotService {
 
     private boolean bool(Map<String, Object> map, String key, boolean defaultValue) {
         Object v = map.get(key);
-        if (v == null) return defaultValue;
+        if (v == null) {
+            return defaultValue;
+        }
         return Boolean.parseBoolean(v.toString());
     }
 }

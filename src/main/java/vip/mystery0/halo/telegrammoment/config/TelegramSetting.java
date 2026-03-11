@@ -1,6 +1,8 @@
 package vip.mystery0.halo.telegrammoment.config;
 
 import lombok.Data;
+import java.util.Arrays;
+import java.util.List;
 
 @Data
 public class TelegramSetting {
@@ -30,9 +32,9 @@ public class TelegramSetting {
     /** 将逗号分隔的 channelFilter 解析为 List */
     public java.util.List<String> getChannelFilterList() {
         if (channelFilter == null || channelFilter.isBlank()) {
-            return java.util.List.of();
+            return List.of();
         }
-        return java.util.Arrays.stream(channelFilter.split(","))
+        return Arrays.stream(channelFilter.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();

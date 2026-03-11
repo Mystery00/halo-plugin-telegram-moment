@@ -2,6 +2,7 @@ package vip.mystery0.halo.telegrammoment.publisher;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import vip.mystery0.halo.telegrammoment.model.Moment;
 
 @Data
 @AllArgsConstructor
@@ -13,5 +14,5 @@ public class AttachmentUploadResult {
     /** MIME 类型，如 "image/jpeg" */
     private String mimeType;
     /** "PHOTO" 或 "VIDEO" */
-    private String mediaType;
+    private Moment.MomentMediaType mediaType;
 }

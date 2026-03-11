@@ -15,6 +15,7 @@ import org.telegram.telegrambots.meta.api.objects.File;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
+import vip.mystery0.halo.telegrammoment.model.Moment;
 
 import java.io.InputStream;
 import java.time.Duration;
@@ -40,7 +41,7 @@ public class AttachmentUploader {
     public AttachmentUploadResult upload(String fileId,
                                          OkHttpTelegramClient client,
                                          TelegramSetting setting,
-                                         String mediaType) {
+                                         Moment.MomentMediaType mediaType) {
         try {
             // 1. 获取文件路径
             GetFile getFile = GetFile.builder().fileId(fileId).build();

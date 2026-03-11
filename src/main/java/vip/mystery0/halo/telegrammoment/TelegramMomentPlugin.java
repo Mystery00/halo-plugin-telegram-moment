@@ -10,7 +10,6 @@ import vip.mystery0.halo.telegrammoment.bot.TelegramBotService;
 @Slf4j
 @Component
 public class TelegramMomentPlugin extends BasePlugin {
-
     @Autowired
     private TelegramBotService botService;
 

@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.scheduler.Schedulers;
 import run.halo.app.extension.ListOptions;
+import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 import vip.mystery0.halo.telegrammoment.model.Moment;
 
@@ -20,29 +21,35 @@ import java.util.*;
 @Component
 @RequiredArgsConstructor
 public class MomentPublisher {
+    /**
+     * 注解键常量
+     */
+    public static final String ANNOTATION_MESSAGE_ID = "messageId";
+    public static final String ANNOTATION_CHAT_ID = "chatId";
+    public static final String ANNOTATION_ATTACHMENT_NAMES = "attachmentNames";
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final ReactiveExtensionClient extensionClient;
 
     private static final DateTimeFormatter RELEASE_TIME_FMT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-                    .withZone(ZoneOffset.UTC);
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+            .withZone(ZoneOffset.UTC);
 
     /**
      * 创建新 Moment。
      */
     public void publish(String content,
-                        List<String> tags,
-                        List<Moment.MediumItem> medium,
-                        List<String> attachNames,
-                        long messageId,
-                        long chatId,
-                        Instant releaseTime) {
+        List<String> tags,
+        List<Moment.MomentMedia> medium,
+        List<String> attachNames,
+        long messageId,
+        long chatId,
+        Instant releaseTime) {
         Moment moment = buildMoment(content, tags, medium, attachNames, messageId, chatId, releaseTime);
         extensionClient.create(moment)
-                .subscribeOn(Schedulers.boundedElastic())
-                .block();
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
         log.info("发布 Moment 成功，messageId={}, chatId={}", messageId, chatId);
     }
 
@@ -50,12 +57,12 @@ public class MomentPublisher {
      * 编辑消息：删除旧 Moment + 创建新 Moment。
      */
     public void update(String content,
-                       List<String> tags,
-                       List<Moment.MediumItem> medium,
-                       List<String> attachNames,
-                       long messageId,
-                       long chatId,
-                       Instant releaseTime) {
+        List<String> tags,
+        List<Moment.MomentMedia> medium,
+        List<String> attachNames,
+        long messageId,
+        long chatId,
+        Instant releaseTime) {
         delete(messageId, chatId);
         publish(content, tags, medium, attachNames, messageId, chatId, releaseTime);
     }
@@ -72,10 +79,10 @@ public class MomentPublisher {
         Moment moment = existing.get();
 
         // 删除关联附件
-        String attachNamesJson = moment.getMetadata().getAnnotations()
-                .getOrDefault(Moment.ANNOTATION_ATTACHMENT_NAMES, "[]");
+        String attachNamesJson = moment.getMetadata().getAnnotations().getOrDefault(ANNOTATION_ATTACHMENT_NAMES, "[]");
         try {
-            List<String> attachmentNames = objectMapper.readValue(attachNamesJson, new TypeReference<>() {});
+            List<String> attachmentNames = objectMapper.readValue(attachNamesJson, new TypeReference<>() {
+            });
             for (String name : attachmentNames) {
                 deleteAttachment(name);
             }
@@ -85,8 +92,8 @@ public class MomentPublisher {
 
         // 删除 Moment
         extensionClient.delete(moment)
-                .subscribeOn(Schedulers.boundedElastic())
-                .block();
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
         log.info("删除 Moment 成功，messageId={}, chatId={}", messageId, chatId);
     }
 
@@ -98,23 +105,25 @@ public class MomentPublisher {
         String chatIdStr = String.valueOf(chatId);
 
         return extensionClient.listAll(Moment.class, new ListOptions(), null)
-                .filter(m -> {
-                    Map<String, String> annotations = m.getMetadata().getAnnotations();
-                    if (annotations == null) return false;
-                    return msgIdStr.equals(annotations.get(Moment.ANNOTATION_MESSAGE_ID))
-                            && chatIdStr.equals(annotations.get(Moment.ANNOTATION_CHAT_ID));
-                })
-                .next()
-                .subscribeOn(Schedulers.boundedElastic())
-                .blockOptional();
+            .filter(m -> {
+                Map<String, String> annotations = m.getMetadata().getAnnotations();
+                if (annotations == null) {
+                    return false;
+                }
+                return msgIdStr.equals(annotations.get(ANNOTATION_MESSAGE_ID)) && chatIdStr.equals(
+                    annotations.get(ANNOTATION_CHAT_ID));
+            })
+            .next()
+            .subscribeOn(Schedulers.boundedElastic())
+            .blockOptional();
     }
 
     private void deleteAttachment(String attachmentName) {
         try {
             extensionClient.fetch(run.halo.app.core.extension.attachment.Attachment.class, attachmentName)
-                    .flatMap(extensionClient::delete)
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .block();
+                .flatMap(extensionClient::delete)
+                .subscribeOn(Schedulers.boundedElastic())
+                .block();
             log.debug("删除附件成功: {}", attachmentName);
         } catch (Exception e) {
             log.warn("删除附件失败，忽略: {}", attachmentName, e);
@@ -122,34 +131,34 @@ public class MomentPublisher {
     }
 
     private Moment buildMoment(String html,
-                                List<String> tags,
-                                List<Moment.MediumItem> medium,
-                                List<String> attachNames,
-                                long messageId,
-                                long chatId,
-                                Instant releaseTime) {
+        List<String> tags,
+        List<Moment.MomentMedia> medium,
+        List<String> attachNames,
+        long messageId,
+        long chatId,
+        Instant releaseTime) {
         Moment moment = new Moment();
 
-        run.halo.app.extension.Metadata metadata = new run.halo.app.extension.Metadata();
+        Metadata metadata = new Metadata();
         metadata.setGenerateName("telegram-moment-");
         Map<String, String> annotations = new HashMap<>();
-        annotations.put(Moment.ANNOTATION_MESSAGE_ID, String.valueOf(messageId));
-        annotations.put(Moment.ANNOTATION_CHAT_ID, String.valueOf(chatId));
+        annotations.put(ANNOTATION_MESSAGE_ID, String.valueOf(messageId));
+        annotations.put(ANNOTATION_CHAT_ID, String.valueOf(chatId));
         try {
-            annotations.put(Moment.ANNOTATION_ATTACHMENT_NAMES,
-                    objectMapper.writeValueAsString(attachNames));
+            annotations.put(ANNOTATION_ATTACHMENT_NAMES, objectMapper.writeValueAsString(attachNames));
         } catch (JsonProcessingException e) {
-            annotations.put(Moment.ANNOTATION_ATTACHMENT_NAMES, "[]");
+            annotations.put(ANNOTATION_ATTACHMENT_NAMES, "[]");
         }
         metadata.setAnnotations(annotations);
         moment.setMetadata(metadata);
 
         Moment.MomentSpec spec = new Moment.MomentSpec();
-        spec.setReleaseTime(RELEASE_TIME_FMT.format(releaseTime));
-        spec.setTags(new ArrayList<>(tags));
-        spec.setVisible("PUBLIC");
+        spec.setOwner("");
+        spec.setReleaseTime(releaseTime);
+        spec.setTags(new HashSet<>(tags));
+        spec.setVisible(Moment.MomentVisible.PUBLIC);
 
-        Moment.Content content = new Moment.Content();
+        Moment.MomentContent content = new Moment.MomentContent();
         content.setRaw(html);
         content.setHtml(html);
         content.setMedium(new ArrayList<>(medium));

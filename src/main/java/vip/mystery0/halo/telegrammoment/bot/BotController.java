@@ -20,16 +20,15 @@ public class BotController {
     @GetMapping("/status")
     public Mono<Map<String, Object>> status() {
         return Mono.fromCallable(() -> Map.<String, Object>of(
-                "running", botService.isRunning(),
-                "username", botService.getBotUsername() != null
-                        ? botService.getBotUsername() : ""
+            "running", botService.isRunning(),
+            "username", botService.getBotUsername() != null ? botService.getBotUsername() : ""
         )).subscribeOn(Schedulers.boundedElastic());
     }
 
     @PostMapping("/restart")
     public Mono<Map<String, String>> restart() {
         return Mono.fromRunnable(botService::restartBot)
-                .subscribeOn(Schedulers.boundedElastic())
-                .thenReturn(Map.of("message", "Bot 正在重启，请稍后刷新状态"));
+            .subscribeOn(Schedulers.boundedElastic())
+            .thenReturn(Map.of("message", "Bot 正在重启，请稍后刷新状态"));
     }
 }
