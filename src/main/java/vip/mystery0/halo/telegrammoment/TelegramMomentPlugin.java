@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import run.halo.app.plugin.BasePlugin;
 import run.halo.app.plugin.PluginContext;
+import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.bot.TelegramBotService;
 
 @Slf4j
@@ -19,13 +20,13 @@ public class TelegramMomentPlugin extends BasePlugin {
 
     @Override
     public void start() {
-        log.info("Telegram Moment 插件启动");
+        PluginLogger.info(log, "Telegram Moment 插件启动");
         botService.startBot();
     }
 
     @Override
     public void stop() {
-        log.info("Telegram Moment 插件停止");
+        PluginLogger.info(log, "Telegram Moment 插件停止");
         botService.stopBot();
     }
 }

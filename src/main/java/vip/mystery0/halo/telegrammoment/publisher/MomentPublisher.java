@@ -10,6 +10,7 @@ import reactor.core.scheduler.Schedulers;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
+import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.model.Moment;
 
 import java.time.Instant;
@@ -50,7 +51,7 @@ public class MomentPublisher {
         extensionClient.create(moment)
             .subscribeOn(Schedulers.boundedElastic())
             .block();
-        log.info("发布 Moment 成功，messageId={}, chatId={}", messageId, chatId);
+        PluginLogger.info(log, "发布 Moment 成功，messageId={}, chatId={}", messageId, chatId);
     }
 
     /**
@@ -73,7 +74,7 @@ public class MomentPublisher {
     public void delete(long messageId, long chatId) {
         Optional<Moment> existing = findByMessageId(messageId, chatId);
         if (existing.isEmpty()) {
-            log.warn("未找到对应 Moment，跳过删除。messageId={}, chatId={}", messageId, chatId);
+            PluginLogger.warn(log, "未找到对应 Moment，跳过删除。messageId={}, chatId={}", messageId, chatId);
             return;
         }
         Moment moment = existing.get();
@@ -87,14 +88,14 @@ public class MomentPublisher {
                 deleteAttachment(name);
             }
         } catch (JsonProcessingException e) {
-            log.warn("解析附件名称失败，跳过附件删除: {}", attachNamesJson, e);
+            PluginLogger.warn(log, "解析附件名称失败，跳过附件删除: {}", attachNamesJson, e);
         }
 
         // 删除 Moment
         extensionClient.delete(moment)
             .subscribeOn(Schedulers.boundedElastic())
             .block();
-        log.info("删除 Moment 成功，messageId={}, chatId={}", messageId, chatId);
+        PluginLogger.info(log, "删除 Moment 成功，messageId={}, chatId={}", messageId, chatId);
     }
 
     /**
@@ -124,9 +125,9 @@ public class MomentPublisher {
                 .flatMap(extensionClient::delete)
                 .subscribeOn(Schedulers.boundedElastic())
                 .block();
-            log.debug("删除附件成功: {}", attachmentName);
+            PluginLogger.debug(log, "删除附件成功: {}", attachmentName);
         } catch (Exception e) {
-            log.warn("删除附件失败，忽略: {}", attachmentName, e);
+            PluginLogger.warn(log, "删除附件失败，忽略: {}", attachmentName, e);
         }
     }
 

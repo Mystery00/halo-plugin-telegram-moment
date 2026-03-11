@@ -10,6 +10,7 @@ public class TelegramSetting {
     // --- bot group ---
     private String botToken = "";
     private String apiEndpoint = "";
+    private boolean debugMode = false;
 
     // --- channel group ---
     private boolean channelEnabled = true;

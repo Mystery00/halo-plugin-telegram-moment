@@ -14,6 +14,10 @@ spec:
         - $formkit: text
           name: apiEndpoint
           label: API Endpoint（留空使用官方 https://api.telegram.org）
+        - $formkit: checkbox
+          name: debugMode
+          label: 调试模式（开启后日志同时打印到控制台 stdout）
+          value: false
     - group: channel
       label: 频道配置
       formSchema:

@@ -13,6 +13,7 @@ import org.telegram.telegrambots.meta.api.methods.GetMe;
 import reactor.core.scheduler.Schedulers;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ReactiveExtensionClient;
+import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
 import vip.mystery0.halo.telegrammoment.handler.MediaGroupAggregator;
 import vip.mystery0.halo.telegrammoment.handler.MessageHandler;
@@ -54,12 +55,13 @@ public class TelegramBotService {
 
     public synchronized void startBot() {
         TelegramSetting setting = readSetting();
+        PluginLogger.setDebugMode(setting.isDebugMode());
         if (!setting.hasValidToken()) {
-            log.warn("Bot Token 未配置，跳过 Bot 启动。请在配置页面设置 Bot Token 后点击「重启 Bot」。");
+            PluginLogger.warn(log, "Bot Token 未配置，跳过 Bot 启动。请在配置页面设置 Bot Token 后点击「重启 Bot」。");
             return;
         }
 
-        log.info("正在启动 Telegram Bot...");
+        PluginLogger.info(log, "正在启动 Telegram Bot...");
 
         String apiEndpoint = setting.getApiEndpoint();
         boolean hasCustomEndpoint = apiEndpoint != null && !apiEndpoint.isBlank();
@@ -86,10 +88,10 @@ public class TelegramBotService {
             botApplication.registerBot(setting.getBotToken(), handler);
             mediaGroupAggregator.start(setting, telegramClient);
             running.set(true);
-            log.info("Telegram Bot 启动成功");
+            PluginLogger.info(log, "Telegram Bot 启动成功");
         } catch (Exception e) {
             running.set(false);
-            log.error("Telegram Bot 启动失败", e);
+            PluginLogger.error(log, "Telegram Bot 启动失败", e);
         }
     }
 
@@ -100,16 +102,16 @@ public class TelegramBotService {
             try {
                 botApplication.close();
             } catch (Exception e) {
-                log.warn("关闭 Bot Application 时出现异常（通常可忽略）", e);
+                PluginLogger.warn(log, "关闭 Bot Application 时出现异常（通常可忽略）", e);
             }
             botApplication = null;
         }
         telegramClient = null;
-        log.info("Telegram Bot 已停止");
+        PluginLogger.info(log, "Telegram Bot 已停止");
     }
 
     public void restartBot() {
-        log.info("正在重启 Telegram Bot...");
+        PluginLogger.info(log, "正在重启 Telegram Bot...");
         stopBot();
         startBot();
     }
@@ -133,7 +135,7 @@ public class TelegramBotService {
                 .port(port)
                 .build();
         } catch (Exception e) {
-            log.warn("解析自定义 API 端点失败，将使用默认端点: {}", apiEndpoint, e);
+            PluginLogger.warn(log, "解析自定义 API 端点失败，将使用默认端点: {}", apiEndpoint, e);
             return TelegramUrl.DEFAULT_URL;
         }
     }
@@ -144,7 +146,7 @@ public class TelegramBotService {
                 .subscribeOn(Schedulers.boundedElastic())
                 .block();
             if (configMap == null || configMap.getData() == null) {
-                log.warn("插件配置 ConfigMap 不存在或为空: {}", CONFIG_MAP_NAME);
+                PluginLogger.warn(log, "插件配置 ConfigMap 不存在或为空: {}", CONFIG_MAP_NAME);
                 return new TelegramSetting();
             }
 
@@ -158,7 +160,7 @@ public class TelegramBotService {
 
             return setting;
         } catch (Exception e) {
-            log.error("读取插件配置失败", e);
+            PluginLogger.error(log, "读取插件配置失败", e);
             return new TelegramSetting();
         }
     }
@@ -174,6 +176,7 @@ public class TelegramBotService {
                 case "bot" -> {
                     setting.setBotToken(str(map, "botToken"));
                     setting.setApiEndpoint(str(map, "apiEndpoint"));
+                    setting.setDebugMode(bool(map, "debugMode", false));
                 }
                 case "channel" -> {
                     setting.setChannelEnabled(bool(map, "channelEnabled", true));
@@ -194,7 +197,7 @@ public class TelegramBotService {
                 }
             }
         } catch (Exception e) {
-            log.warn("解析配置 group={} 失败: {}", group, json, e);
+            PluginLogger.warn(log, "解析配置 group={} 失败: {}", group, json, e);
         }
     }
 

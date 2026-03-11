@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
 import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploadResult;
 import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploader;
@@ -47,7 +48,7 @@ public class MediaGroupAggregator {
             () -> drainReady(setting, telegramClient),
             5, 5, TimeUnit.SECONDS
         );
-        log.info("MediaGroupAggregator 已启动");
+        PluginLogger.info(log, "MediaGroupAggregator 已启动");
     }
 
     /**
@@ -58,7 +59,7 @@ public class MediaGroupAggregator {
             scheduler.shutdownNow();
         }
         pendingGroups.clear();
-        log.info("MediaGroupAggregator 已停止");
+        PluginLogger.info(log, "MediaGroupAggregator 已停止");
     }
 
     /**
@@ -87,7 +88,7 @@ public class MediaGroupAggregator {
             try {
                 processGroup(group, setting, telegramClient);
             } catch (Exception e) {
-                log.error("处理媒体组失败，albumId={}", entry.getKey(), e);
+                PluginLogger.error(log, "处理媒体组失败，albumId={}", entry.getKey(), e);
             }
             return true; // 无论成功失败，都从 map 移除
         });
@@ -129,7 +130,7 @@ public class MediaGroupAggregator {
                 medium.add(item);
                 attachmentNames.add(result.getAttachmentName());
             } catch (Exception e) {
-                log.error("媒体组图片上传失败，跳过: {}", largest.getFileId(), e);
+                PluginLogger.error(log, "媒体组图片上传失败，跳过: {}", largest.getFileId(), e);
             }
         }
 

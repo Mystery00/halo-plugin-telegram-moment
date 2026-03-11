@@ -7,6 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.MessageEntity;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
 import vip.mystery0.halo.telegrammoment.model.Moment;
 import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploadResult;
@@ -93,7 +94,7 @@ public class MessageHandler {
             entities = message.getEntities() != null ? message.getEntities() : List.of();
 
         } else {
-            log.debug("忽略不支持的消息类型，messageId={}", message.getMessageId());
+            PluginLogger.debug(log, "忽略不支持的消息类型，messageId={}", message.getMessageId());
             return;
         }
 
@@ -116,10 +117,10 @@ public class MessageHandler {
      */
     public void handleDelete(Message targetMessage) {
         if (targetMessage == null) {
-            log.warn("删除目标消息为空，跳过");
+            PluginLogger.warn(log, "删除目标消息为空，跳过");
             return;
         }
-        log.info("删除 Moment，messageId={}, chatId={}",
+        PluginLogger.info(log, "删除 Moment，messageId={}, chatId={}",
             targetMessage.getMessageId(), targetMessage.getChatId());
         momentPublisher.delete(targetMessage.getMessageId(), targetMessage.getChatId());
     }
@@ -127,7 +128,7 @@ public class MessageHandler {
     private boolean checkEnabled(Message message, boolean isChannel, TelegramSetting setting) {
         if (isChannel) {
             if (!setting.isChannelEnabled()) {
-                log.debug("频道消息监听已关闭，跳过");
+                PluginLogger.debug(log, "频道消息监听已关闭，跳过");
                 return false;
             }
             // 指定频道 ID 过滤
@@ -135,7 +136,7 @@ public class MessageHandler {
                 try {
                     long expectedId = Long.parseLong(setting.getChannelId());
                     if (message.getChatId() != expectedId) {
-                        log.debug("非目标频道 {}，跳过", message.getChatId());
+                        PluginLogger.debug(log, "非目标频道 {}，跳过", message.getChatId());
                         return false;
                     }
                 } catch (NumberFormatException ignored) {
@@ -146,20 +147,20 @@ public class MessageHandler {
                 : (message.getCaption() != null ? message.getCaption() : "");
             for (String filterTag : setting.getChannelFilterList()) {
                 if (text.contains("#" + filterTag)) {
-                    log.info("消息含屏蔽标签 #{}，跳过", filterTag);
+                    PluginLogger.info(log, "消息含屏蔽标签 #{}，跳过", filterTag);
                     return false;
                 }
             }
         } else {
             if (!setting.isPrivateEnabled()) {
-                log.debug("私聊消息监听已关闭，跳过");
+                PluginLogger.debug(log, "私聊消息监听已关闭，跳过");
                 return false;
             }
             if (setting.getPrivateSenderId() != null && !setting.getPrivateSenderId().isBlank()) {
                 try {
                     long expectedSender = Long.parseLong(setting.getPrivateSenderId());
                     if (message.getChatId() != expectedSender) {
-                        log.debug("非允许的私聊发送者 {}，跳过", message.getChatId());
+                        PluginLogger.debug(log, "非允许的私聊发送者 {}，跳过", message.getChatId());
                         return false;
                     }
                 } catch (NumberFormatException ignored) {
@@ -180,7 +181,7 @@ public class MessageHandler {
             medium.add(item);
             attachmentNames.add(result.getAttachmentName());
         } catch (Exception e) {
-            log.error("单媒体文件上传失败，fileId={}，继续发布文字内容", fileId, e);
+            PluginLogger.error(log, "单媒体文件上传失败，fileId={}，继续发布文字内容", fileId, e);
         }
     }
 }

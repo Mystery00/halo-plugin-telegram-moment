@@ -6,6 +6,7 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
 import vip.mystery0.halo.telegrammoment.handler.MessageHandler;
 
@@ -33,7 +34,7 @@ public class TelegramUpdateHandler implements LongPollingSingleThreadUpdateConsu
                 messageHandler.handleMessage(update.getEditedMessage(), true, false, setting, telegramClient);
             }
         } catch (Exception e) {
-            log.error("处理 Telegram Update 异常，updateId={}", update.getUpdateId(), e);
+            PluginLogger.error(log, "处理 Telegram Update 异常，updateId={}", update.getUpdateId(), e);
         }
     }
 
@@ -45,14 +46,14 @@ public class TelegramUpdateHandler implements LongPollingSingleThreadUpdateConsu
             if (target != null) {
                 messageHandler.handleDelete(target);
             } else {
-                log.warn("/rm 指令无回复目标，忽略");
+                PluginLogger.warn(log, "/rm 指令无回复目标，忽略");
             }
         } else if (CMD_REDO.equals(text)) {
             Message target = message.getReplyToMessage();
             if (target != null) {
                 messageHandler.handleMessage(target, false, true, setting, telegramClient);
             } else {
-                log.warn("/redo 指令无回复目标，忽略");
+                PluginLogger.warn(log, "/redo 指令无回复目标，忽略");
             }
         } else {
             messageHandler.handleMessage(message, false, true, setting, telegramClient);
