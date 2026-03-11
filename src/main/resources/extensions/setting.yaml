@@ -41,6 +41,15 @@ spec:
         - $formkit: text
           name: privateSenderId
           label: 允许的发送者 Chat ID（留空不限制）
+    - group: moment
+      label: 瞬间配置
+      formSchema:
+        - $formkit: text
+          name: momentOwner
+          label: 发布者用户名
+          help: 请输入 Halo 账号的用户名（用户名不存在会导致处理逻辑失败）
+          required: true
+          validation: required
     - group: storage
       label: 附件存储
       formSchema:

@@ -1,25 +1,24 @@
 package vip.mystery0.halo.telegrammoment.handler;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.meta.api.objects.message.Message;
+import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.meta.api.objects.MessageEntity;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
+import run.halo.moments.Moment;
 import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
-import run.halo.moments.Moment;
 import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploadResult;
 import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploader;
 import vip.mystery0.halo.telegrammoment.publisher.ContentBuilder;
 import vip.mystery0.halo.telegrammoment.publisher.ContentResult;
 import vip.mystery0.halo.telegrammoment.publisher.MomentPublisher;
-
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 
 @Slf4j
 @Component
@@ -105,10 +104,10 @@ public class MessageHandler {
 
         if (isEdit) {
             momentPublisher.update(contentResult.html(), contentResult.tags(), medium, attachmentNames,
-                message.getMessageId(), message.getChatId(), releaseTime);
+                message.getMessageId(), message.getChatId(), releaseTime, setting.getMomentOwner());
         } else {
             momentPublisher.publish(contentResult.html(), contentResult.tags(), medium, attachmentNames,
-                message.getMessageId(), message.getChatId(), releaseTime);
+                message.getMessageId(), message.getChatId(), releaseTime, setting.getMomentOwner());
         }
     }
 

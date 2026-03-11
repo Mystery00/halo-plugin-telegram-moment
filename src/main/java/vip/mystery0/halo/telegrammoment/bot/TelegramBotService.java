@@ -2,6 +2,9 @@ package vip.mystery0.halo.telegrammoment.bot;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -11,16 +14,13 @@ import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.meta.TelegramUrl;
 import org.telegram.telegrambots.meta.api.methods.GetMe;
 import reactor.core.scheduler.Schedulers;
+import run.halo.app.core.extension.User;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ReactiveExtensionClient;
 import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
 import vip.mystery0.halo.telegrammoment.handler.MediaGroupAggregator;
 import vip.mystery0.halo.telegrammoment.handler.MessageHandler;
-
-import java.net.URI;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Component
@@ -58,6 +58,22 @@ public class TelegramBotService {
         PluginLogger.setDebugMode(setting.isDebugMode());
         if (!setting.hasValidToken()) {
             PluginLogger.warn(log, "Bot Token 未配置，跳过 Bot 启动。请在配置页面设置 Bot Token 后点击「重启 Bot」。");
+            return;
+        }
+        if (setting.getMomentOwner() == null || setting.getMomentOwner().isBlank()) {
+            PluginLogger.warn(log, "发布者用户名（momentOwner）未配置，跳过 Bot 启动。请在插件页面填写发布者用户名后点击「重启 Bot」。");
+            return;
+        }
+
+        // 校验 momentOwner 对应的 Halo 用户是否存在
+        User owner = extensionClient.fetch(User.class, setting.getMomentOwner())
+                .subscribeOn(Schedulers.boundedElastic())
+                .block();
+        if (owner == null) {
+            PluginLogger.error(log, "========================================");
+            PluginLogger.error(log, "Bot 启动失败：发布者用户名 \"{}\" 在 Halo 中不存在！", setting.getMomentOwner());
+            PluginLogger.error(log, "请在插件页面填写正确的用户名后点击「重启 Bot」。");
+            PluginLogger.error(log, "========================================");
             return;
         }
 
@@ -156,6 +172,7 @@ public class TelegramBotService {
             parseGroup(data.get("bot"), setting, "bot");
             parseGroup(data.get("channel"), setting, "channel");
             parseGroup(data.get("private"), setting, "private");
+            parseGroup(data.get("moment"), setting, "moment");
             parseGroup(data.get("storage"), setting, "storage");
 
             return setting;
@@ -186,6 +203,9 @@ public class TelegramBotService {
                 case "private" -> {
                     setting.setPrivateEnabled(bool(map, "privateEnabled", false));
                     setting.setPrivateSenderId(str(map, "privateSenderId"));
+                }
+                case "moment" -> {
+                    setting.setMomentOwner(str(map, "momentOwner"));
                 }
                 case "storage" -> {
                     setting.setStoragePolicy(str(map, "storagePolicy"));

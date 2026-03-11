@@ -1,8 +1,8 @@
 package vip.mystery0.halo.telegrammoment.config;
 
-import lombok.Data;
 import java.util.Arrays;
 import java.util.List;
+import lombok.Data;
 
 @Data
 public class TelegramSetting {
@@ -20,6 +20,9 @@ public class TelegramSetting {
     // --- private group ---
     private boolean privateEnabled = false;
     private String privateSenderId = "";
+
+    // --- moment group ---
+    private String momentOwner = "";
 
     // --- storage group ---
     private String storagePolicy = "";

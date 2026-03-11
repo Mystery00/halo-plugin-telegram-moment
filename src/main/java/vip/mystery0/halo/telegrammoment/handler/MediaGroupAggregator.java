@@ -1,20 +1,5 @@
 package vip.mystery0.halo.telegrammoment.handler;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.meta.api.objects.message.Message;
-import org.telegram.telegrambots.meta.api.objects.PhotoSize;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
-import vip.mystery0.halo.telegrammoment.PluginLogger;
-import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
-import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploadResult;
-import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploader;
-import vip.mystery0.halo.telegrammoment.publisher.ContentBuilder;
-import vip.mystery0.halo.telegrammoment.publisher.ContentResult;
-import vip.mystery0.halo.telegrammoment.publisher.MomentPublisher;
-import run.halo.moments.Moment;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,6 +8,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
+import run.halo.moments.Moment;
+import vip.mystery0.halo.telegrammoment.PluginLogger;
+import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
+import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploadResult;
+import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploader;
+import vip.mystery0.halo.telegrammoment.publisher.ContentBuilder;
+import vip.mystery0.halo.telegrammoment.publisher.ContentResult;
+import vip.mystery0.halo.telegrammoment.publisher.MomentPublisher;
 
 @Slf4j
 @Component
@@ -141,7 +140,8 @@ public class MediaGroupAggregator {
             attachmentNames,
             firstMsg.getMessageId(),
             firstMsg.getChatId(),
-            firstMsg.getDate() != null ? Instant.ofEpochSecond(firstMsg.getDate()) : Instant.now()
+            firstMsg.getDate() != null ? Instant.ofEpochSecond(firstMsg.getDate()) : Instant.now(),
+            setting.getMomentOwner()
         );
     }
 }

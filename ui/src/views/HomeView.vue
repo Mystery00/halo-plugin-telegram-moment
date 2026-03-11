@@ -1,23 +1,24 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import {
-  VButton,
-  VCard,
-  VTag,
-  Toast,
-} from '@halo-dev/components'
+import { VButton, VCard, VTag, Toast } from '@halo-dev/components'
 import axios from 'axios'
 
 const BASE_URL = '/apis/telegram-moment/v1alpha1/bot'
+const CONFIGMAP_URL = '/api/v1alpha1/configmaps/telegram-moment-configmap'
+const USERS_API = '/apis/api.console.halo.run/v1alpha1/users'
 
 interface BotStatus {
   running: boolean
   username: string
 }
 
+// Bot 状态
 const status = ref<BotStatus>({ running: false, username: '' })
 const restarting = ref(false)
-const showSavedHint = ref(false)
+
+// 发布者配置
+const selectedOwner = ref('')
+const ownerSaving = ref(false)
 
 async function fetchStatus() {
   try {
@@ -41,7 +42,9 @@ async function restartBot() {
   }
 }
 
-onMounted(fetchStatus)
+onMounted(() => {
+  fetchStatus()
+})
 </script>
 
 <template>
@@ -57,24 +60,11 @@ onMounted(fetchStatus)
         </span>
         <div class="ml-auto flex gap-2">
           <VButton size="sm" @click="fetchStatus">刷新状态</VButton>
-          <VButton
-            size="sm"
-            type="primary"
-            :loading="restarting"
-            @click="restartBot"
-          >
+          <VButton size="sm" type="primary" :loading="restarting" @click="restartBot">
             重启 Bot
           </VButton>
         </div>
       </div>
     </VCard>
-
-    <!-- 配置保存提示 -->
-    <div
-      v-if="showSavedHint"
-      class="rounded-md bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800"
-    >
-      配置已保存，请点击上方「重启 Bot」按钮使新配置生效。
-    </div>
   </div>
 </template>

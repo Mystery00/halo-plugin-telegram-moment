@@ -44,8 +44,9 @@ public class MomentPublisher {
         List<String> attachNames,
         long messageId,
         long chatId,
-        Instant releaseTime) {
-        Moment moment = buildMoment(content, tags, medium, attachNames, messageId, chatId, releaseTime);
+        Instant releaseTime,
+        String owner) {
+        Moment moment = buildMoment(content, tags, medium, attachNames, messageId, chatId, releaseTime, owner);
         extensionClient.create(moment)
             .subscribeOn(Schedulers.boundedElastic())
             .block();
@@ -61,9 +62,10 @@ public class MomentPublisher {
         List<String> attachNames,
         long messageId,
         long chatId,
-        Instant releaseTime) {
+        Instant releaseTime,
+        String owner) {
         delete(messageId, chatId);
-        publish(content, tags, medium, attachNames, messageId, chatId, releaseTime);
+        publish(content, tags, medium, attachNames, messageId, chatId, releaseTime, owner);
     }
 
     /**
@@ -135,7 +137,8 @@ public class MomentPublisher {
         List<String> attachNames,
         long messageId,
         long chatId,
-        Instant releaseTime) {
+        Instant releaseTime,
+        String owner) {
         Moment moment = new Moment();
 
         Metadata metadata = new Metadata();
@@ -152,7 +155,7 @@ public class MomentPublisher {
         moment.setMetadata(metadata);
 
         Moment.MomentSpec spec = new Moment.MomentSpec();
-        spec.setOwner("api");
+        spec.setOwner(owner != null ? owner : "");
         spec.setReleaseTime(releaseTime);
         spec.setTags(new HashSet<>(tags));
         spec.setVisible(Moment.MomentVisible.PUBLIC);

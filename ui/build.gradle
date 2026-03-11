@@ -31,3 +31,7 @@ tasks.named('check') {
 tasks.named('assemble') {
     dependsOn tasks.named('pnpmBuild')
 }
+
+node {
+    download = true
+}
