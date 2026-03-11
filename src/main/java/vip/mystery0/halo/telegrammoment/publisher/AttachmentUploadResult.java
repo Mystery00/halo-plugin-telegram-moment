@@ -2,7 +2,7 @@ package vip.mystery0.halo.telegrammoment.publisher;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import vip.mystery0.halo.telegrammoment.model.Moment;
+import run.halo.moments.Moment;
 
 @Data
 @AllArgsConstructor

@@ -9,7 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
-import vip.mystery0.halo.telegrammoment.model.Moment;
+import run.halo.moments.Moment;
 import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploadResult;
 import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploader;
 import vip.mystery0.halo.telegrammoment.publisher.ContentBuilder;

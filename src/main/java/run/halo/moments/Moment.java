@@ -1,4 +1,4 @@
-package vip.mystery0.halo.telegrammoment.model;
+package run.halo.moments;
 
 import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 

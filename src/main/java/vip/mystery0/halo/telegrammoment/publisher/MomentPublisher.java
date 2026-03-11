@@ -11,7 +11,7 @@ import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 import vip.mystery0.halo.telegrammoment.PluginLogger;
-import vip.mystery0.halo.telegrammoment.model.Moment;
+import run.halo.moments.Moment;
 
 import java.time.Instant;
 import java.time.ZoneOffset;

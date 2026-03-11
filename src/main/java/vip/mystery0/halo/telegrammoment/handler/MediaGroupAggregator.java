@@ -13,7 +13,7 @@ import vip.mystery0.halo.telegrammoment.publisher.AttachmentUploader;
 import vip.mystery0.halo.telegrammoment.publisher.ContentBuilder;
 import vip.mystery0.halo.telegrammoment.publisher.ContentResult;
 import vip.mystery0.halo.telegrammoment.publisher.MomentPublisher;
-import vip.mystery0.halo.telegrammoment.model.Moment;
+import run.halo.moments.Moment;
 
 import java.time.Instant;
 import java.util.ArrayList;
