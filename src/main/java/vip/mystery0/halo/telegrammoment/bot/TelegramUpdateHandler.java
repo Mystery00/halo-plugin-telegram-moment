@@ -2,10 +2,10 @@ package vip.mystery0.halo.telegrammoment.bot;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import vip.mystery0.halo.telegrammoment.PluginLogger;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
 import vip.mystery0.halo.telegrammoment.handler.MessageHandler;
@@ -25,12 +25,16 @@ public class TelegramUpdateHandler implements LongPollingSingleThreadUpdateConsu
     public void consume(Update update) {
         try {
             if (update.hasChannelPost()) {
+                PluginLogger.debug(log, "处理 Telegram Channel Post，fromUsername={}", update.getChannelPost().getFrom().getUserName());
                 handleChannelPost(update.getChannelPost());
             } else if (update.hasEditedChannelPost()) {
+                PluginLogger.debug(log, "处理 Telegram Channel Post 编辑，fromUsername={}", update.getEditedChannelPost().getFrom().getUserName());
                 messageHandler.handleMessage(update.getEditedChannelPost(), true, true, setting, telegramClient);
             } else if (update.hasMessage()) {
+                PluginLogger.debug(log, "处理 Telegram Private Message，fromUsername={}", update.getMessage().getFrom().getUserName());
                 messageHandler.handleMessage(update.getMessage(), false, false, setting, telegramClient);
             } else if (update.hasEditedMessage()) {
+                PluginLogger.debug(log, "处理 Telegram Private Message 编辑，fromUsername={}", update.getEditedMessage().getFrom().getUserName());
                 messageHandler.handleMessage(update.getEditedMessage(), true, false, setting, telegramClient);
             }
         } catch (Exception e) {
