@@ -28,6 +28,7 @@ public class MessageHandler {
     private final MomentPublisher momentPublisher;
     private final AttachmentUploader attachmentUploader;
     private final MediaGroupAggregator mediaGroupAggregator;
+    private final ReplyHelper replyHelper;
 
     /**
      * 处理一条消息（新建或编辑）。
@@ -48,12 +49,21 @@ public class MessageHandler {
             return;
         }
 
-        // 媒体组处理：图片组直接交给聚合器，提前返回
+        // 媒体组处理：图片组直接交给聚合器，回复由聚合器负责
         if (message.getPhoto() != null
             && message.getMediaGroupId() != null
             && !isEdit) {
             mediaGroupAggregator.add(message.getMediaGroupId(), message, !isChannel, setting);
             return;
+        }
+
+        // 非媒体组：若开启了回复，立即发送"正在处理"回复
+        boolean replyEnabled = isChannel ? setting.isChannelReplyEnabled() : setting.isPrivateReplyEnabled();
+        int deleteSeconds = isChannel ? setting.getChannelReplyDeleteSeconds() : setting.getPrivateReplyDeleteSeconds();
+        java.util.Optional<Integer> replyMsgId = java.util.Optional.empty();
+        if (replyEnabled) {
+            replyMsgId = replyHelper.sendProcessingReply(telegramClient, message.getChatId(),
+                message.getMessageId());
         }
 
         // 构建 Post 数据
@@ -108,6 +118,11 @@ public class MessageHandler {
         } else {
             momentPublisher.publish(contentResult.html(), contentResult.tags(), medium, attachmentNames,
                 message.getMessageId(), message.getChatId(), releaseTime, setting.getMomentOwner());
+        }
+
+        // 处理完成后编辑回复消息并按配置延迟删除
+        if (replyEnabled && replyMsgId.isPresent()) {
+            replyHelper.editAndScheduleDelete(telegramClient, message.getChatId(), replyMsgId.get(), deleteSeconds);
         }
     }
 

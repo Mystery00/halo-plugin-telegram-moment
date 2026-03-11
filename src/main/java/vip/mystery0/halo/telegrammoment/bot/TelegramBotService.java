@@ -203,10 +203,14 @@ public class TelegramBotService {
                     setting.setChannelEnabled(bool(map, "channelEnabled", true));
                     setting.setChannelId(str(map, "channelId"));
                     setting.setChannelFilter(str(map, "channelFilter"));
+                    setting.setChannelReplyEnabled(bool(map, "channelReplyEnabled", false));
+                    setting.setChannelReplyDeleteSeconds(intVal(map, "channelReplyDeleteSeconds", 3));
                 }
                 case "private" -> {
                     setting.setPrivateEnabled(bool(map, "privateEnabled", false));
                     setting.setPrivateSenderId(str(map, "privateSenderId"));
+                    setting.setPrivateReplyEnabled(bool(map, "privateReplyEnabled", false));
+                    setting.setPrivateReplyDeleteSeconds(intVal(map, "privateReplyDeleteSeconds", 3));
                 }
                 case "moment" -> {
                     setting.setMomentOwner(str(map, "momentOwner"));
@@ -236,5 +240,17 @@ public class TelegramBotService {
             return defaultValue;
         }
         return Boolean.parseBoolean(v.toString());
+    }
+
+    private int intVal(Map<String, Object> map, String key, int defaultValue) {
+        Object v = map.get(key);
+        if (v == null) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(v.toString());
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
     }
 }

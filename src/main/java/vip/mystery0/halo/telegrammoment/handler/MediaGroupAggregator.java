@@ -30,14 +30,17 @@ public class MediaGroupAggregator {
 
     private final MomentPublisher momentPublisher;
     private final AttachmentUploader attachmentUploader;
+    private final ReplyHelper replyHelper;
 
     private final ConcurrentHashMap<String, PendingMediaGroup> pendingGroups = new ConcurrentHashMap<>();
     private ScheduledExecutorService scheduler;
+    private OkHttpTelegramClient currentTelegramClient;
 
     /**
      * 由 TelegramBotService 在 Bot 启动时调用
      */
     public void start(TelegramSetting setting, OkHttpTelegramClient telegramClient) {
+        this.currentTelegramClient = telegramClient;
         scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "media-group-aggregator");
             t.setDaemon(true);
@@ -58,6 +61,7 @@ public class MediaGroupAggregator {
             scheduler.shutdownNow();
         }
         pendingGroups.clear();
+        currentTelegramClient = null;
         PluginLogger.info(log, "MediaGroupAggregator 已停止");
     }
 
@@ -70,6 +74,12 @@ public class MediaGroupAggregator {
             if (existing == null) {
                 PendingMediaGroup group = new PendingMediaGroup(executeTimeMs, isPrivate);
                 group.add(message, executeTimeMs);
+                // 媒体组第一条消息到达时，若开启了回复则立即发送处理中回复
+                boolean replyEnabled = isPrivate ? setting.isPrivateReplyEnabled() : setting.isChannelReplyEnabled();
+                if (replyEnabled && currentTelegramClient != null) {
+                    replyHelper.sendProcessingReply(currentTelegramClient, message.getChatId(), message.getMessageId())
+                        .ifPresent(replyId -> group.setReply(message.getChatId(), replyId));
+                }
                 return group;
             }
             existing.add(message, executeTimeMs);
@@ -143,5 +153,14 @@ public class MediaGroupAggregator {
             firstMsg.getDate() != null ? Instant.ofEpochSecond(firstMsg.getDate()) : Instant.now(),
             setting.getMomentOwner()
         );
+
+        // 发布完成后编辑回复消息并按配置延迟删除
+        if (group.getReplyMessageId() != null) {
+            int deleteSeconds = group.isPrivate()
+                ? setting.getPrivateReplyDeleteSeconds()
+                : setting.getChannelReplyDeleteSeconds();
+            replyHelper.editAndScheduleDelete(telegramClient, group.getReplyChatId(),
+                group.getReplyMessageId(), deleteSeconds);
+        }
     }
 }

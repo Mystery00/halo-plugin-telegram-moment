@@ -35,6 +35,15 @@ spec:
         - $formkit: text
           name: channelFilter
           label: 屏蔽标签（逗号分隔的 hashtag，含该标签的消息将被跳过）
+        - $formkit: checkbox
+          name: channelReplyEnabled
+          label: 通过 Telegram 消息响应处理结果
+          value: true
+        - $formkit: number
+          name: channelReplyDeleteSeconds
+          label: 自动清理时间（秒，0 表示不自动删除）
+          if: "$get(channelReplyEnabled).value"
+          value: 3
     - group: private
       label: 私聊配置
       formSchema:
@@ -45,6 +54,15 @@ spec:
         - $formkit: text
           name: privateSenderId
           label: 允许的发送者 Chat ID（留空不限制）
+        - $formkit: checkbox
+          name: privateReplyEnabled
+          label: 通过 Telegram 消息响应处理结果
+          value: true
+        - $formkit: number
+          name: privateReplyDeleteSeconds
+          label: 自动清理时间（秒，0 表示不自动删除）
+          if: "$get(privateReplyEnabled).value"
+          value: 3
     - group: moment
       label: 瞬间配置
       formSchema:

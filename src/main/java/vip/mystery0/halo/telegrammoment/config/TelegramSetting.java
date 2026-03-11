@@ -17,10 +17,14 @@ public class TelegramSetting {
     private boolean channelEnabled = true;
     private String channelId = "";
     private String channelFilter = "";
+    private boolean channelReplyEnabled = false;
+    private int channelReplyDeleteSeconds = 3;
 
     // --- private group ---
     private boolean privateEnabled = false;
     private String privateSenderId = "";
+    private boolean privateReplyEnabled = false;
+    private int privateReplyDeleteSeconds = 3;
 
     // --- moment group ---
     private String momentOwner = "";
