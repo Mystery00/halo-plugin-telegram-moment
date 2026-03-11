@@ -31,6 +31,50 @@ public class Moment extends AbstractExtension {
 
     private Status status;
 
+    public boolean isApproved() {
+        return Boolean.TRUE.equals(this.getSpec().getApproved());
+    }
+
+    public boolean isPubliclyVisible() {
+        return MomentVisible.PUBLIC.equals(this.getSpec().getVisible());
+    }
+
+    public enum MomentMediaType {
+        PHOTO,
+        VIDEO,
+        POST,
+        AUDIO,
+        // TODO Might add more types here in the future
+    }
+
+    public enum MomentVisible {
+        /**
+         * Public is default visible of moment.
+         */
+        PUBLIC,
+
+        /**
+         * Private visible is only for view for self.
+         */
+        PRIVATE;
+        // TODO Might add more visibles here in the future.
+
+        /**
+         * Convert value string to {@link MomentVisible}.
+         *
+         * @param value enum value string
+         * @return {@link MomentVisible} if found, otherwise null
+         */
+        public static MomentVisible from(String value) {
+            for (MomentVisible visible : MomentVisible.values()) {
+                if (visible.name().equalsIgnoreCase(value)) {
+                    return visible;
+                }
+            }
+            return null;
+        }
+    }
+
     @Data
     public static class MomentSpec {
 
@@ -91,49 +135,5 @@ public class Moment extends AbstractExtension {
 
         @Schema(description = "Origin type of media.")
         private String originType;
-    }
-
-    public enum MomentMediaType {
-        PHOTO,
-        VIDEO,
-        POST,
-        AUDIO,
-        // TODO Might add more types here in the future
-    }
-
-    public enum MomentVisible {
-        /**
-         * Public is default visible of moment.
-         */
-        PUBLIC,
-
-        /**
-         * Private visible is only for view for self.
-         */
-        PRIVATE;
-        // TODO Might add more visibles here in the future.
-
-        /**
-         * Convert value string to {@link MomentVisible}.
-         *
-         * @param value enum value string
-         * @return {@link MomentVisible} if found, otherwise null
-         */
-        public static MomentVisible from(String value) {
-            for (MomentVisible visible : MomentVisible.values()) {
-                if (visible.name().equalsIgnoreCase(value)) {
-                    return visible;
-                }
-            }
-            return null;
-        }
-    }
-
-    public boolean isApproved() {
-        return Boolean.TRUE.equals(this.getSpec().getApproved());
-    }
-
-    public boolean isPubliclyVisible() {
-        return MomentVisible.PUBLIC.equals(this.getSpec().getVisible());
     }
 }

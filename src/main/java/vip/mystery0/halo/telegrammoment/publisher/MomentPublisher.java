@@ -3,6 +3,13 @@ package vip.mystery0.halo.telegrammoment.publisher;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -10,13 +17,8 @@ import reactor.core.scheduler.Schedulers;
 import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import vip.mystery0.halo.telegrammoment.PluginLogger;
 import run.halo.moments.Moment;
-
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import vip.mystery0.halo.telegrammoment.PluginLogger;
 
 @Slf4j
 @Component
@@ -32,10 +34,6 @@ public class MomentPublisher {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final ReactiveExtensionClient extensionClient;
-
-    private static final DateTimeFormatter RELEASE_TIME_FMT =
-        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-            .withZone(ZoneOffset.UTC);
 
     /**
      * 创建新 Moment。
@@ -154,7 +152,7 @@ public class MomentPublisher {
         moment.setMetadata(metadata);
 
         Moment.MomentSpec spec = new Moment.MomentSpec();
-        spec.setOwner("");
+        spec.setOwner("api");
         spec.setReleaseTime(releaseTime);
         spec.setTags(new HashSet<>(tags));
         spec.setVisible(Moment.MomentVisible.PUBLIC);

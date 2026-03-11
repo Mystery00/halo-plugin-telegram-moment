@@ -5,6 +5,8 @@ metadata:
 spec:
   enabled: true
   requires: ">=2.22.0"
+  pluginDependencies:
+    "PluginMoments": ">=1.15.0"
   author:
     name: Mystery0
     website: https://github.com/Mystery0

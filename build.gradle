@@ -10,8 +10,37 @@ repositories {
     mavenCentral()
 }
 
+// stub source set：仅用于编译，Moment.class 不进入 main output，
+// 运行时由 moments 插件（pluginDependencies）的 classloader 提供
+sourceSets {
+    stub {
+        java.srcDirs = ['src/stub/java']
+    }
+    main {
+        compileClasspath += sourceSets.stub.output.classesDirs
+    }
+    test {
+        compileClasspath += sourceSets.stub.output.classesDirs
+        runtimeClasspath += sourceSets.stub.output.classesDirs
+    }
+}
+
+// stub source set 继承 main 的依赖，确保编译时能找到 Halo API / Swagger 注解 / Lombok
+configurations {
+    stubImplementation.extendsFrom(implementation)
+    stubCompileOnly.extendsFrom(compileOnly)
+}
+
+// stub 先于 main 编译
+tasks.named('compileJava') {
+    dependsOn('compileStubJava')
+}
+tasks.named('compileTestJava') {
+    dependsOn('compileStubJava')
+}
+
 dependencies {
-    implementation platform('run.halo.tools.platform:plugin:2.22.0')
+    implementation platform('run.halo.tools.platform:plugin:2.22.11')
     compileOnly 'run.halo.app:api'
 
     // Telegram Bot SDK
@@ -51,6 +80,5 @@ tasks.named('classes') {
 
 halo {
     version = '2.22'
-    additionalConfigFile = layout.projectDirectory.file('config/application.yaml')
 }
 
