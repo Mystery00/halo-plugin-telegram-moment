@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import run.halo.app.plugin.PluginContext;
 import vip.mystery0.halo.telegrammoment.bot.TelegramBotService;
+import run.halo.app.extension.SchemeManager;
 
 @ExtendWith(MockitoExtension.class)
 class TelegramMomentPluginTest {
@@ -18,12 +19,16 @@ class TelegramMomentPluginTest {
     @Mock
     TelegramBotService botService;
 
+    @Mock
+    SchemeManager schemeManager;
+
     TelegramMomentPlugin plugin;
 
     @BeforeEach
     void setUp() {
         plugin = new TelegramMomentPlugin(context);
         ReflectionTestUtils.setField(plugin, "botService", botService);
+        ReflectionTestUtils.setField(plugin, "schemeManager", schemeManager);
     }
 
     @Test

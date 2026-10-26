@@ -1,0 +1,15 @@
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: role-template-telegram-moment-manage
+  labels:
+    halo.run/role-template: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "Telegram 瞬间"
+    rbac.authorization.halo.run/display-name: "管理同步与查看日志"
+    rbac.authorization.halo.run/ui-permissions: |
+      ["plugin:telegram-moment:manage"]
+rules:
+  - apiGroups: ["console.api.telegram-moment.halo.run"]
+    resources: ["status", "restart", "stop", "tasks", "tasks/retry", "logs"]
+    verbs: ["get", "list", "create", "delete"]

@@ -1,0 +1,20 @@
+services:
+  halo:
+    image: halohub/halo:2.22.14
+    ports:
+      - "127.0.0.1:18090:8090"
+    volumes:
+      - halo-test-data:/root/.halo2
+    environment:
+      JVM_OPTS: -Xmx768m -Xms256m
+    command:
+      - --halo.external-url=http://127.0.0.1:18090
+  telegram-moment-mock:
+    image: python:3.12-slim
+    ports:
+      - "127.0.0.1:18081:8080"
+    volumes:
+      - .:/scripts:ro
+    command: ["python", "/scripts/mock_telegram.py"]
+volumes:
+  halo-test-data:

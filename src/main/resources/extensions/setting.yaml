@@ -7,7 +7,7 @@ spec:
     - group: bot
       label: Bot 配置
       formSchema:
-        - $formkit: text
+        - $formkit: password
           name: botToken
           label: Bot Token
           required: true
@@ -16,7 +16,8 @@ spec:
           label: API Endpoint（留空使用官方 https://api.telegram.org）
         - $formkit: checkbox
           name: debugMode
-          label: 调试模式（开启后日志同时打印到控制台 stdout）
+          label: 调试模式
+          help: 记录每次轮询请求与空响应，排障时启用；正常模式每分钟记录连接心跳。保存后重启 Bot 生效。
           value: false
         - $formkit: checkbox
           name: enableLogBuffer
@@ -38,7 +39,7 @@ spec:
         - $formkit: checkbox
           name: channelReplyEnabled
           label: 通过 Telegram 消息响应处理结果
-          value: true
+          value: false
         - $formkit: number
           name: channelReplyDeleteSeconds
           label: 自动清理时间（秒，0 表示不自动删除）
@@ -53,11 +54,11 @@ spec:
           value: false
         - $formkit: text
           name: privateSenderId
-          label: 允许的发送者 Chat ID（留空不限制）
+          label: 允许的发送者 ID（启用私聊时必填）
         - $formkit: checkbox
           name: privateReplyEnabled
           label: 通过 Telegram 消息响应处理结果
-          value: true
+          value: false
         - $formkit: number
           name: privateReplyDeleteSeconds
           label: 自动清理时间（秒，0 表示不自动删除）
@@ -86,3 +87,5 @@ spec:
           name: mediaDelaySeconds
           label: 媒体组聚合延迟秒数（默认 3）
           value: 3
+          min: 1
+          max: 60

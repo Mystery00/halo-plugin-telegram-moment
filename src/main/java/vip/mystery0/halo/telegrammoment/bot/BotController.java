@@ -1,48 +1,36 @@
 package vip.mystery0.halo.telegrammoment.bot;
 
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import vip.mystery0.halo.telegrammoment.LogBuffer;
 
 @RestController
-@RequestMapping("/apis/telegram-moment/v1alpha1/bot")
+@RequestMapping("/apis/console.api.telegram-moment.halo.run/v1alpha1")
 @RequiredArgsConstructor
 public class BotController {
-
-    private final TelegramBotService botService;
-    private final LogBuffer logBuffer;
-
-    @GetMapping("/status")
-    public Mono<Map<String, Object>> status() {
-        return Mono.fromCallable(() -> Map.<String, Object>of(
-            "running", botService.isRunning(),
-            "username", botService.getBotUsername() != null ? botService.getBotUsername() : ""
-        )).subscribeOn(Schedulers.boundedElastic());
+    private final TelegramBotService bot;
+    private final LogBuffer logs;
+    @GetMapping("/status") public Mono<TelegramBotService.Status> status() {
+        return Mono.fromCallable(bot::status).subscribeOn(Schedulers.boundedElastic());
     }
-
-    @PostMapping("/restart")
-    public Mono<Map<String, String>> restart() {
-        return Mono.fromRunnable(botService::restartBot)
-            .subscribeOn(Schedulers.boundedElastic())
-            .thenReturn(Map.of("message", "Bot 正在重启，请稍后刷新状态"));
+    @PostMapping("/restart") public Mono<TelegramBotService.Status> restart() {
+        return Mono.fromCallable(() -> { bot.restartBot(); return bot.status(); }).subscribeOn(Schedulers.boundedElastic());
     }
-
-    @GetMapping("/logs")
-    public Mono<List<LogBuffer.LogEntry>> getLogs() {
-        return Mono.just(logBuffer.getLogs());
+    @PostMapping("/stop") public Mono<TelegramBotService.Status> stop() {
+        return Mono.fromCallable(() -> { bot.stopBot(); return bot.status(); }).subscribeOn(Schedulers.boundedElastic());
     }
-
-    @DeleteMapping("/logs")
-    public Mono<Void> clearLogs() {
-        logBuffer.clear();
-        return Mono.empty();
+    @GetMapping("/tasks") public Mono<List<TelegramBotService.TaskView>> tasks() {
+        return Mono.fromCallable(bot::tasks).subscribeOn(Schedulers.boundedElastic());
     }
+    @PostMapping("/tasks/{name}/retry") public Mono<Void> retry(@PathVariable("name") String name) {
+        return Mono.<Void>fromRunnable(() -> bot.retry(name)).subscribeOn(Schedulers.boundedElastic())
+            .onErrorMap(IllegalArgumentException.class, e -> new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage()));
+    }
+    @GetMapping("/logs") public List<LogBuffer.LogEntry> logs() { return logs.getLogs(); }
+    @DeleteMapping("/logs") public void clearLogs() { logs.clear(); }
 }

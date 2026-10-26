@@ -15,6 +15,7 @@ export default definePlugin({
         meta: {
           title: 'Telegram Moment',
           searchable: true,
+          permissions: ['plugin:telegram-moment:manage'],
           menu: {
             name: 'Telegram Moment',
             group: '工具',

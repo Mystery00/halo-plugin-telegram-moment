@@ -1,256 +1,274 @@
 package vip.mystery0.halo.telegrammoment.bot;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.net.URI;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import okhttp3.OkHttpClient;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
-import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
-import org.telegram.telegrambots.meta.TelegramUrl;
-import org.telegram.telegrambots.meta.api.methods.GetMe;
-import reactor.core.scheduler.Schedulers;
-import run.halo.app.core.extension.User;
-import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.extension.SchemeManager;
 import vip.mystery0.halo.telegrammoment.LogBuffer;
-import vip.mystery0.halo.telegrammoment.PluginLogger;
+import vip.mystery0.halo.telegrammoment.publisher.SyncPublisher;
+import vip.mystery0.halo.telegrammoment.sync.SyncRepository;
+import vip.mystery0.halo.telegrammoment.sync.SyncCoordinator;
+import vip.mystery0.halo.telegrammoment.sync.SyncRecord;
+import vip.mystery0.halo.telegrammoment.sync.Jsons;
 import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
-import vip.mystery0.halo.telegrammoment.handler.MediaGroupAggregator;
-import vip.mystery0.halo.telegrammoment.handler.MessageHandler;
+import vip.mystery0.halo.telegrammoment.telegram.TelegramApi;
+import vip.mystery0.halo.telegrammoment.telegram.TelegramApiException;
+import vip.mystery0.halo.telegrammoment.publisher.HaloMomentGateway;
+import run.halo.app.extension.ConfigMap;
+import run.halo.app.core.extension.User;
+import run.halo.app.core.extension.attachment.Policy;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+import com.fasterxml.jackson.core.type.TypeReference;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class TelegramBotService {
-
-    private static final String CONFIG_MAP_NAME = "telegram-moment-configmap";
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    private final ReactiveExtensionClient extensionClient;
-    private final MessageHandler messageHandler;
-    private final MediaGroupAggregator mediaGroupAggregator;
-    private final LogBuffer logBuffer;
-
-    private TelegramBotsLongPollingApplication botApplication;
-    private OkHttpTelegramClient telegramClient;
-    private final AtomicBoolean running = new AtomicBoolean(false);
-
-    public boolean isRunning() {
-        return running.get();
-    }
-
-    public String getBotUsername() {
-        if (telegramClient == null) {
-            return null;
-        }
-        try {
-            return telegramClient.execute(GetMe.builder().build()).getUserName();
-        } catch (Exception e) {
-            return null;
-        }
-    }
+    private final ReactiveExtensionClient client;
+    private final SchemeManager schemes;
+    private final SyncRepository repository;
+    private final SyncCoordinator coordinator;
+    private final SyncPublisher publisher;
+    private final LogBuffer logs;
+    private final AtomicLong generation = new AtomicLong();
+    private volatile String phase = "STOPPED";
+    private volatile String username = "";
+    private volatile long botId;
+    private volatile String error = "";
+    private volatile String appliedFingerprint = "";
+    private volatile Instant lastPoll;
+    private volatile Instant lastPublished;
+    private volatile long pendingCount;
+    private volatile long failedCount;
+    private ScheduledExecutorService workers;
+    private TelegramApi api;
 
     public synchronized void startBot() {
-        TelegramSetting setting = readSetting();
-        PluginLogger.setDebugMode(setting.isDebugMode());
-        logBuffer.setEnabled(setting.isEnableLogBuffer());
-        if (!setting.hasValidToken()) {
-            PluginLogger.warn(log, "Bot Token 未配置，跳过 Bot 启动。请在配置页面设置 Bot Token 后点击「重启 Bot」。");
-            return;
-        }
-        if (setting.getMomentOwner() == null || setting.getMomentOwner().isBlank()) {
-            PluginLogger.warn(log, "发布者用户名（momentOwner）未配置，跳过 Bot 启动。请在插件页面填写发布者用户名后点击「重启 Bot」。");
-            return;
-        }
-
-        // 校验 momentOwner 对应的 Halo 用户是否存在
-        User owner = extensionClient.fetch(User.class, setting.getMomentOwner())
-                .subscribeOn(Schedulers.boundedElastic())
-                .block();
-        if (owner == null) {
-            PluginLogger.error(log, "========================================");
-            PluginLogger.error(log, "Bot 启动失败：发布者用户名 \"{}\" 在 Halo 中不存在！", setting.getMomentOwner());
-            PluginLogger.error(log, "请在插件页面填写正确的用户名后点击「重启 Bot」。");
-            PluginLogger.error(log, "========================================");
-            return;
-        }
-
-        PluginLogger.info(log, "正在启动 Telegram Bot...");
-
-        String apiEndpoint = setting.getApiEndpoint();
-        boolean hasCustomEndpoint = apiEndpoint != null && !apiEndpoint.isBlank();
-
-        if (hasCustomEndpoint) {
-            // 解析自定义 API 端点，构造 TelegramUrl
-            TelegramUrl telegramUrl = buildTelegramUrl(apiEndpoint);
-            telegramClient = new OkHttpTelegramClient(
-                new OkHttpClient(),
-                setting.getBotToken(),
-                telegramUrl
-            );
-        } else {
-            telegramClient = new OkHttpTelegramClient(
-                new OkHttpClient(),
-                setting.getBotToken()
-            );
-        }
-
-        TelegramUpdateHandler handler = new TelegramUpdateHandler(messageHandler, setting, telegramClient);
-
-        botApplication = new TelegramBotsLongPollingApplication();
+        if (workers != null) return;
+        phase = "STARTING"; error = "";
         try {
-            botApplication.registerBot(setting.getBotToken(), handler);
-            mediaGroupAggregator.start(setting, telegramClient);
-            running.set(true);
-            PluginLogger.info(log, "Telegram Bot 启动成功");
+            var settings = settings();
+            logs.setEnabled(settings.isEnableLogBuffer());
+            logs.add("INFO", "Bot", "Starting bot: validating configuration and Halo dependencies");
+            if (!settings.hasValidToken()) { phase = "UNCONFIGURED"; error = "Bot token is required"; logs.add("WARN", "Bot", error); return; }
+            settings.validate();
+            if (client.fetch(User.class, settings.getMomentOwner()).block(Duration.ofSeconds(15)) == null)
+                throw new IllegalArgumentException("Moment owner does not exist");
+            if (client.fetch(Policy.class, settings.getStoragePolicy()).block(Duration.ofSeconds(15)) == null)
+                throw new IllegalArgumentException("Storage policy does not exist");
+            if (schemes.fetch(HaloMomentGateway.GVK).isEmpty()) throw new IllegalArgumentException("Moments plugin is not enabled");
+            api = new TelegramApi(settings);
+            logs.add("INFO", "Connection", "Calling getMe to verify bot identity; requestTimeoutSeconds=30");
+            var me = api.getMe(); botId = me.path("id").asLong(); username = me.path("username").asText();
+            if (botId <= 0 || !me.path("is_bot").asBoolean()) throw new IllegalArgumentException("Invalid bot identity");
+            logs.add("INFO", "Connection", "Bot identity verified: bot=" + botId + " username=" + username);
+            logs.add("INFO", "Bot", "Reception configured: channelEnabled=" + settings.isChannelEnabled()
+                + " channel=" + (settings.getChannelId() == null || settings.getChannelId().isBlank() ? "all accessible channels" : settings.getChannelId().trim())
+                + " privateEnabled=" + settings.isPrivateEnabled() + " albumDelaySeconds=" + settings.getMediaDelaySeconds()
+                + " repliesEnabled=" + (settings.isChannelReplyEnabled() || settings.isPrivateReplyEnabled()));
+            long session = generation.incrementAndGet(); long id = botId; TelegramApi transport = api;
+            appliedFingerprint = settings.fingerprint();
+            workers = Executors.newScheduledThreadPool(2, runnable -> {
+                var thread = new Thread(runnable, "telegram-moment-worker"); thread.setDaemon(true); return thread;
+            });
+            phase = "RUNNING";
+            workers.execute(() -> poll(session, id, transport, settings));
+            workers.scheduleWithFixedDelay(() -> work(session, id, transport, settings), 1, 1, TimeUnit.SECONDS);
+            logs.add("INFO", "Bot", "Bot started");
         } catch (Exception e) {
-            running.set(false);
-            PluginLogger.error(log, "Telegram Bot 启动失败", e);
+            phase = "CONFIG_ERROR"; error = safeError(e);
+            if (api != null) { api.close(); api = null; }
+            logs.add("ERROR", "Bot", "Startup failed: " + error + "; fix configuration/connectivity and restart bot");
         }
+    }
+
+    private void poll(long session, long id, TelegramApi transport, TelegramSetting settings) {
+        int failures = 0;
+        long lastHeartbeat = 0;
+        logs.add("INFO", "Polling", "Long polling started: bot=" + id + " timeoutSeconds=20; idle heartbeat every 60 seconds");
+        while (generation.get() == session && !Thread.currentThread().isInterrupted()) {
+            String operation = "getUpdates";
+            try {
+                long offset;
+                synchronized (coordinator) { offset = repository.cursor(id).getSpec().getNextOffset(); }
+                long started = System.nanoTime();
+                if (settings.isDebugMode()) logs.add("DEBUG", "Polling", "Request started: method=getUpdates offset=" + offset);
+                var updates = transport.updates(offset);
+                if (generation.get() != session) return;
+                long duration = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+                if (failures > 0) logs.add("INFO", "Connection", "Polling recovered after failures=" + failures);
+                if (!updates.isEmpty() || lastHeartbeat == 0 || System.currentTimeMillis() - lastHeartbeat >= 60000 || settings.isDebugMode()) {
+                    logs.add("INFO", "Polling", "getUpdates succeeded: updates=" + updates.size() + " offset=" + offset
+                        + " durationMs=" + duration + (updates.isEmpty() ? "; connection healthy, waiting for messages" : ""));
+                    lastHeartbeat = System.currentTimeMillis();
+                }
+                operation = "persist received update";
+                for (var update : updates) {
+                    if (generation.get() != session) return;
+                    String context = updateContext(update);
+                    logs.add("INFO", "Receive", "Received " + context);
+                    String outcome = coordinator.accept(id, update, settings);
+                    logs.add("INFO", "Receive", outcome + " " + context);
+                }
+                if (generation.get() != session) return;
+                lastPoll = Instant.now(); phase = "RUNNING"; error = ""; failures = 0;
+                if (updates.isEmpty()) sleep(200);
+            } catch (Exception e) {
+                if (generation.get() != session || Thread.currentThread().isInterrupted()) return;
+                error = safeError(e);
+                if (e instanceof TelegramApiException telegram && !telegram.retryable()) {
+                    phase = "CONFIG_ERROR";
+                    logs.add("ERROR", "Polling", operation + " failed: " + error + "; polling stopped, fix the cause and restart bot");
+                    return;
+                }
+                phase = "RECONNECTING";
+                failures++;
+                int delay = e instanceof TelegramApiException telegram && telegram.retryAfter() > 0
+                    ? telegram.retryAfter() : Math.min(60, 1 << Math.min(failures, 6));
+                logs.add("WARN", "Polling", operation + " failed: " + error + " consecutiveFailures=" + failures
+                    + " retryInSeconds=" + delay + "; unpersisted updates will be requested again");
+                if (!sleep(delay * 1000L)) return;
+            }
+        }
+    }
+
+    private void work(long session, long id, TelegramApi transport, TelegramSetting settings) {
+        if (generation.get() != session || phase.equals("CONFIG_ERROR")) return;
+        try {
+            synchronized (coordinator) {
+                for (var record : coordinator.ready(id)) {
+                    if (generation.get() != session || Thread.currentThread().isInterrupted()) return;
+                    boolean succeeded = false;
+                    long started = System.nanoTime();
+                    logs.add("INFO", "Sync", "Processing started: task=" + record.getMetadata().getName()
+                        + " action=" + record.getSpec().getAction() + " chat=" + record.getSpec().getChatId()
+                        + " members=" + record.members().size() + " attempt=" + (record.getSpec().getAttempts() + 1) + "/5");
+                    try {
+                        publisher.publish(record, settings, transport);
+                        succeeded = List.of("SUCCEEDED", "DELETED").contains(record.getSpec().getState());
+                        if (succeeded) lastPublished = Instant.now();
+                        logs.add("INFO", "Sync", "Processing completed: task=" + record.getMetadata().getName()
+                            + " state=" + record.getSpec().getState() + " moment=" + record.getSpec().getMomentName()
+                            + " durationMs=" + TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started)
+                            + (record.getSpec().getState().equals("IGNORED") ? "; skipped because an album member matched a blocked hashtag" : ""));
+                    } catch (Exception e) {
+                        if (generation.get() != session || Thread.currentThread().isInterrupted()) return;
+                        var latest = repository.get(record.getMetadata().getName());
+                        if (latest == null) continue;
+                        var spec = latest.getSpec(); spec.setAttempts(spec.getAttempts() + 1);
+                        spec.setError(safeError(e));
+                        boolean retryable = !(e instanceof IllegalArgumentException)
+                            && (!(e instanceof TelegramApiException telegram) || telegram.retryable());
+                        spec.setState(retryable && spec.getAttempts() < 5 ? "PENDING" : "FAILED");
+                        int retryAfter = e instanceof TelegramApiException telegram ? telegram.retryAfter() : 0;
+                        spec.setReadyAt(System.currentTimeMillis() + Math.max(retryAfter, 1L << Math.min(5, spec.getAttempts())) * 1000L);
+                        repository.save(latest); logs.add("ERROR", "Sync", "Processing failed: task=" + latest.getMetadata().getName()
+                            + " attempt=" + spec.getAttempts() + "/5 state=" + spec.getState() + " reason=" + spec.getError()
+                            + (spec.getState().equals("PENDING") ? " retryInSeconds=" + Math.max(retryAfter, 1L << Math.min(5, spec.getAttempts()))
+                                : "; automatic retry stopped, fix the cause and retry from the management page"));
+                        record = latest;
+                    }
+                    if (generation.get() != session) return;
+                    if (succeeded || record.getSpec().getState().equals("FAILED")) reply(id, record, succeeded, settings, transport);
+                }
+                var records = repository.records(id);
+                pendingCount = records.stream().filter(r -> r.getSpec().getState().equals("PENDING")).count();
+                failedCount = records.stream().filter(r -> r.getSpec().getState().equals("FAILED")).count();
+                for (var record : records) {
+                    if (generation.get() != session) return;
+                    if (!record.getSpec().getCleanup().isEmpty())
+                        publisher.cleanup(record);
+                }
+                deleteDueReplies(id, transport);
+            }
+        } catch (Exception e) {
+            if (generation.get() == session) logs.add("ERROR", "Worker", safeError(e));
+        }
+    }
+
+    private void reply(long id, SyncRecord record, boolean succeeded, TelegramSetting settings, TelegramApi transport) {
+        if (record.members().isEmpty()) return;
+        var first = record.members().getFirst(); boolean channel = first.chatType().equals("channel");
+        if (!(channel ? settings.isChannelReplyEnabled() : settings.isPrivateReplyEnabled())) return;
+        try {
+            long sent = transport.reply(first.chatId(), first.messageId(), succeeded ? "瞬间同步完成" : "瞬间同步失败，请在 Halo 插件页面查看并重试");
+            if (sent > 0) coordinator.rememberReply(id, first.chatId(), sent,
+                channel ? settings.getChannelReplyDeleteSeconds() : settings.getPrivateReplyDeleteSeconds());
+        } catch (Exception e) { logs.add("WARN", "Reply", "Reply could not be delivered"); }
+    }
+
+    private void deleteDueReplies(long id, TelegramApi transport) {
+        var cursor = repository.cursor(id);
+        Map<String, Long> replies = Jsons.read(cursor.getSpec().getRepliesJson(), new TypeReference<>() { });
+        boolean changed = false;
+        for (var entry : replies.entrySet()) {
+            if (entry.getValue() > 0 && entry.getValue() <= System.currentTimeMillis()) {
+                var ids = entry.getKey().split(":");
+                try { transport.deleteReply(Long.parseLong(ids[0]), Long.parseLong(ids[1])); entry.setValue(0L); changed = true; }
+                catch (TelegramApiException e) {
+                    if (!e.retryable()) { entry.setValue(0L); changed = true; }
+                }
+            }
+        }
+        if (changed) { cursor.getSpec().setRepliesJson(Jsons.write(replies)); repository.saveCursor(cursor); }
     }
 
     public synchronized void stopBot() {
-        running.set(false);
-        mediaGroupAggregator.stop();
-        if (botApplication != null) {
+        generation.incrementAndGet();
+        if (api != null) { api.close(); api = null; }
+        if (workers != null) {
+            workers.shutdownNow();
             try {
-                botApplication.close();
-            } catch (Exception e) {
-                PluginLogger.warn(log, "关闭 Bot Application 时出现异常（通常可忽略）", e);
+                if (!workers.awaitTermination(55, TimeUnit.SECONDS)) { phase = "ERROR"; throw new IllegalStateException("Previous worker has not stopped"); }
+            } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IllegalStateException("Stop interrupted"); }
+            workers = null;
+        }
+        phase = "STOPPED"; logs.add("INFO", "Bot", "Bot stopped");
+    }
+    public synchronized void restartBot() { stopBot(); startBot(); }
+    public boolean isRunning() { return phase.equals("RUNNING") || phase.equals("RECONNECTING"); }
+    public String getBotUsername() { return username; }
+    public Status status() {
+        boolean pending = false;
+        try { pending = !appliedFingerprint.isEmpty() && !appliedFingerprint.equals(settings().fingerprint()); }
+        catch (Exception e) { pending = true; }
+        return new Status(phase, isRunning(), username, botId, error, lastPoll, lastPublished, pending, pendingCount, failedCount, logs.isEnabled());
+    }
+    public List<TaskView> tasks() {
+        if (botId <= 0) return List.of();
+        synchronized (coordinator) {
+            return repository.records(botId).stream().filter(r -> List.of("FAILED", "PENDING").contains(r.getSpec().getState()))
+                .limit(100).map(r -> new TaskView(r.getMetadata().getName(), r.getSpec().getState(), r.getSpec().getAttempts(), r.getSpec().getError())).toList();
+        }
+    }
+    public void retry(String name) { coordinator.retry(botId, name); logs.add("INFO", "Sync", "Manual retry requested: task=" + name); }
+    private static String updateContext(com.fasterxml.jackson.databind.JsonNode update) {
+        for (String kind : List.of("channel_post", "edited_channel_post", "message", "edited_message")) {
+            if (update.has(kind)) {
+                var message = update.path(kind);
+                return "update=" + update.path("update_id").asLong() + " type=" + kind
+                    + " chat=" + message.path("chat").path("id").asLong() + " message=" + message.path("message_id").asLong()
+                    + " album=" + message.has("media_group_id");
             }
-            botApplication = null;
         }
-        telegramClient = null;
-        PluginLogger.info(log, "Telegram Bot 已停止");
+        return "update=" + update.path("update_id").asLong() + " type=unsupported";
     }
-
-    public void restartBot() {
-        PluginLogger.info(log, "正在重启 Telegram Bot...");
-        stopBot();
-        startBot();
+    private TelegramSetting settings() { return TelegramSetting.from(client.fetch(ConfigMap.class, "telegram-moment-configmap").block(Duration.ofSeconds(10))); }
+    private static boolean sleep(long millis) {
+        try { Thread.sleep(millis); return true; } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
     }
-
-    /**
-     * 将自定义 API 端点字符串解析为 TelegramUrl 对象。
-     * 例如 "https://my-proxy.example.com" 解析为 schema=https, host=my-proxy.example.com, port=443
-     */
-    private TelegramUrl buildTelegramUrl(String apiEndpoint) {
-        try {
-            URI uri = URI.create(apiEndpoint);
-            String schema = uri.getScheme() != null ? uri.getScheme() : "https";
-            String host = uri.getHost();
-            int port = uri.getPort();
-            if (port == -1) {
-                port = "https".equalsIgnoreCase(schema) ? 443 : 80;
-            }
-            return TelegramUrl.builder()
-                .schema(schema)
-                .host(host)
-                .port(port)
-                .build();
-        } catch (Exception e) {
-            PluginLogger.warn(log, "解析自定义 API 端点失败，将使用默认端点: {}", apiEndpoint, e);
-            return TelegramUrl.DEFAULT_URL;
-        }
+    public static String safeError(Exception error) {
+        if (error instanceof TelegramApiException) return error.getMessage();
+        if (error instanceof IllegalArgumentException && error.getStackTrace().length > 0
+            && error.getStackTrace()[0].getClassName().startsWith("vip.mystery0.halo.telegrammoment"))
+            return LogBuffer.redact(error.getMessage());
+        return "Operation failed (" + error.getClass().getSimpleName() + ")";
     }
-
-    private TelegramSetting readSetting() {
-        try {
-            ConfigMap configMap = extensionClient.fetch(ConfigMap.class, CONFIG_MAP_NAME)
-                .subscribeOn(Schedulers.boundedElastic())
-                .block();
-            if (configMap == null || configMap.getData() == null) {
-                PluginLogger.warn(log, "插件配置 ConfigMap 不存在或为空: {}", CONFIG_MAP_NAME);
-                return new TelegramSetting();
-            }
-
-            TelegramSetting setting = new TelegramSetting();
-            Map<String, String> data = configMap.getData();
-
-            parseGroup(data.get("bot"), setting, "bot");
-            parseGroup(data.get("channel"), setting, "channel");
-            parseGroup(data.get("private"), setting, "private");
-            parseGroup(data.get("moment"), setting, "moment");
-            parseGroup(data.get("storage"), setting, "storage");
-
-            return setting;
-        } catch (Exception e) {
-            PluginLogger.error(log, "读取插件配置失败", e);
-            return new TelegramSetting();
-        }
-    }
-
-    private void parseGroup(String json, TelegramSetting setting, String group) {
-        if (json == null || json.isBlank()) {
-            return;
-        }
-        try {
-            Map<String, Object> map = objectMapper.readValue(json, new TypeReference<>() {
-            });
-            switch (group) {
-                case "bot" -> {
-                    setting.setBotToken(str(map, "botToken"));
-                    setting.setApiEndpoint(str(map, "apiEndpoint"));
-                    setting.setDebugMode(bool(map, "debugMode", false));
-                    setting.setEnableLogBuffer(bool(map, "enableLogBuffer", false));
-                }
-                case "channel" -> {
-                    setting.setChannelEnabled(bool(map, "channelEnabled", true));
-                    setting.setChannelId(str(map, "channelId"));
-                    setting.setChannelFilter(str(map, "channelFilter"));
-                    setting.setChannelReplyEnabled(bool(map, "channelReplyEnabled", false));
-                    setting.setChannelReplyDeleteSeconds(intVal(map, "channelReplyDeleteSeconds", 3));
-                }
-                case "private" -> {
-                    setting.setPrivateEnabled(bool(map, "privateEnabled", false));
-                    setting.setPrivateSenderId(str(map, "privateSenderId"));
-                    setting.setPrivateReplyEnabled(bool(map, "privateReplyEnabled", false));
-                    setting.setPrivateReplyDeleteSeconds(intVal(map, "privateReplyDeleteSeconds", 3));
-                }
-                case "moment" -> {
-                    setting.setMomentOwner(str(map, "momentOwner"));
-                }
-                case "storage" -> {
-                    setting.setStoragePolicy(str(map, "storagePolicy"));
-                    setting.setStorageGroup(str(map, "storageGroup"));
-                    Object delay = map.get("mediaDelaySeconds");
-                    if (delay != null) {
-                        setting.setMediaDelaySeconds(Integer.parseInt(delay.toString()));
-                    }
-                }
-            }
-        } catch (Exception e) {
-            PluginLogger.warn(log, "解析配置 group={} 失败: {}", group, json, e);
-        }
-    }
-
-    private String str(Map<String, Object> map, String key) {
-        Object v = map.get(key);
-        return v != null ? v.toString() : "";
-    }
-
-    private boolean bool(Map<String, Object> map, String key, boolean defaultValue) {
-        Object v = map.get(key);
-        if (v == null) {
-            return defaultValue;
-        }
-        return Boolean.parseBoolean(v.toString());
-    }
-
-    private int intVal(Map<String, Object> map, String key, int defaultValue) {
-        Object v = map.get(key);
-        if (v == null) {
-            return defaultValue;
-        }
-        try {
-            return Integer.parseInt(v.toString());
-        } catch (NumberFormatException e) {
-            return defaultValue;
-        }
-    }
+    public record TaskView(String name, String state, int attempts, String error) { }
+    public record Status(String phase, boolean running, String username, long botId, String error,
+        Instant lastPoll, Instant lastPublished, boolean configPending, long pendingCount, long failedCount, boolean logEnabled) { }
 }
