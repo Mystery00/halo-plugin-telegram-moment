@@ -16,7 +16,11 @@ spec:
         - $formkit: text
           name: apiEndpoint
           label: API Endpoint（留空使用官方 https://api.telegram.org）
-          help: 仅支持公开 HTTPS 地址和 443 端口，可包含路径前缀；不支持内网、本地 HTTP Bot API 或自动重定向。
+          help: 支持 HTTPS 和 443 端口，可包含路径前缀；默认只连接公网地址，私网代理需在下方精确授权。不支持 HTTP 或自动重定向。
+        - $formkit: textarea
+          name: trustedEndpointAddresses
+          label: 可信端点地址（可选）
+          help: 每行或逗号分隔一个“域名=IP”，例如 proxy.example.com=100.64.0.7。仅授权你管理或信任的代理；支持私网和 CGNAT，不支持通配符、网段、环回或链路本地地址。所有 DNS 结果均须符合策略；保存后重启 Bot 生效。
         - $formkit: checkbox
           name: debugMode
           label: 调试模式

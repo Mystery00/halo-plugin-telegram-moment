@@ -36,7 +36,7 @@ public class TelegramApi implements AutoCloseable {
 
     public TelegramApi(TelegramSetting settings) {
         base = EndpointPolicy.endpoint(settings.getApiEndpoint()); token = settings.getBotToken();
-        var resolver = new PublicAddressResolverGroup();
+        var resolver = new PublicAddressResolverGroup(TrustedEndpointAddresses.parse(settings.getTrustedEndpointAddresses()));
         var loops = LoopResources.create("telegram-moment-http", 1, true);
         // 独立 NIO 事件循环与解析器匹配；不继承系统代理，不跟随重定向，不复用旧连接。
         var transport = HttpClient.newConnection().runOn(loops, false).resolver(resolver)

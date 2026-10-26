@@ -4,6 +4,11 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TelegramSettingTest {
+    @Test void trustedEndpointConfigurationMustInvalidateRunningSettings() {
+        var config = new run.halo.app.extension.ConfigMap();
+        config.setData(java.util.Map.of("bot", "{\"trustedEndpointAddresses\":\"proxy.example=100.64.0.7\"}"));
+        assertThat(TelegramSetting.from(config).fingerprint()).isNotEqualTo(new TelegramSetting().fingerprint());
+    }
 
     @Test
     void defaultValues() {

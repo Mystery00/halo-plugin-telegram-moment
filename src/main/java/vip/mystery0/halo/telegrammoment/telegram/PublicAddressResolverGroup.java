@@ -17,15 +17,25 @@ import java.util.List;
 /** DNS 全部结果通过后直接交给连接层，不再次按主机名解析。 */
 final class PublicAddressResolverGroup extends AddressResolverGroup<InetSocketAddress> {
     private final AddressResolverGroup<InetSocketAddress> delegate;
+    private final TrustedEndpointAddresses trusted;
 
     PublicAddressResolverGroup() {
+        this(TrustedEndpointAddresses.parse(""));
+    }
+
+    PublicAddressResolverGroup(TrustedEndpointAddresses trusted) {
         this(new DnsAddressResolverGroup(new DnsNameResolverBuilder()
             .channelType(NioDatagramChannel.class).socketChannelType(NioSocketChannel.class)
             .resolvedAddressTypes(ResolvedAddressTypes.IPV4_PREFERRED).completeOncePreferredResolved(false)
-            .queryTimeoutMillis(5000).ttl(0, 60).negativeTtl(0)));
+            .queryTimeoutMillis(5000).ttl(0, 60).negativeTtl(0)), trusted);
     }
 
-    PublicAddressResolverGroup(AddressResolverGroup<InetSocketAddress> delegate) { this.delegate = delegate; }
+    PublicAddressResolverGroup(AddressResolverGroup<InetSocketAddress> delegate) { this(delegate, TrustedEndpointAddresses.parse("")); }
+
+    PublicAddressResolverGroup(AddressResolverGroup<InetSocketAddress> delegate, TrustedEndpointAddresses trusted) {
+        this.delegate = delegate;
+        this.trusted = trusted;
+    }
 
     @Override protected AddressResolver<InetSocketAddress> newResolver(EventExecutor executor) {
         var resolver = delegate.getResolver(executor);
@@ -52,7 +62,7 @@ final class PublicAddressResolverGroup extends AddressResolverGroup<InetSocketAd
                         if (values.isEmpty()) throw new java.net.UnknownHostException();
                         for (var value : values) {
                             if (value.isUnresolved()) throw new java.net.UnknownHostException();
-                            EndpointPolicy.requirePublic(value.getAddress());
+                            trusted.requireAllowed(((InetSocketAddress) address).getHostString(), value.getAddress());
                         }
                         promise.trySuccess(List.copyOf(values));
                     } catch (Exception error) { promise.tryFailure(error); }

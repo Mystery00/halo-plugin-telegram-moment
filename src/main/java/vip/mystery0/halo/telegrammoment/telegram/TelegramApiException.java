@@ -18,6 +18,8 @@ public class TelegramApiException extends RuntimeException {
         // 只依据异常类型分类，不保留异常对象、原始信息或可能包含 Token 的 URL。
         for (int depth = 0; failure != null && depth < 10; depth++, failure = failure.getCause()) {
             String detail = null;
+            if (failure instanceof EndpointAddressRejectedException)
+                return new TelegramApiException(0, 0, failure.getMessage());
             if (failure instanceof java.net.http.HttpTimeoutException || failure instanceof java.util.concurrent.TimeoutException
                 || failure instanceof java.net.SocketTimeoutException) detail = "Request timed out; check endpoint reachability and proxy latency";
             else if (failure instanceof java.net.UnknownHostException || failure instanceof java.nio.channels.UnresolvedAddressException)

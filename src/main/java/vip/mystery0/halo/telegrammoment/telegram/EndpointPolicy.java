@@ -40,7 +40,7 @@ public final class EndpointPolicy {
                 && !(first == 0x2001 && (bytes[2] & 255) == 0x0d && (bytes[3] & 255) == 0xb8)
                 && first != 0x2002 && !(first == 0x3fff && (bytes[2] & 0xf0) == 0);
         }
-        if (!allowed) throw new IllegalArgumentException("API endpoint resolved to a non-public address");
+        if (!allowed) throw new EndpointAddressRejectedException(address);
     }
 
     private static boolean range(long address, long network, int bits) {

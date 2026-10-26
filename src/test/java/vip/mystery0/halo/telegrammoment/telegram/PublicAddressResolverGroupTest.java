@@ -10,6 +10,25 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class PublicAddressResolverGroupTest {
+    @Test void explicitPrivateProxyPermissionStillChecksEveryDnsResultAndHost() throws Exception {
+        var executor = new DefaultEventExecutor();
+        @SuppressWarnings("unchecked") var delegate = (AddressResolver<InetSocketAddress>) mock(AddressResolver.class);
+        var source = new AddressResolverGroup<InetSocketAddress>() {
+            protected AddressResolver<InetSocketAddress> newResolver(io.netty.util.concurrent.EventExecutor ignored) { return delegate; }
+        };
+        try (var group = new PublicAddressResolverGroup(source, TrustedEndpointAddresses.parse("proxy.example=100.64.0.7"))) {
+            var resolver = group.getResolver(executor);
+            var target = InetSocketAddress.createUnresolved("proxy.example", 443);
+            var trusted = new InetSocketAddress("100.64.0.7", 443);
+            when(delegate.resolveAll(target)).thenReturn(executor.newSucceededFuture(List.of(trusted)));
+            assertThat(resolver.resolve(target).get()).isSameAs(trusted);
+            when(delegate.resolveAll(target)).thenReturn(executor.newSucceededFuture(List.of(trusted, new InetSocketAddress("10.0.0.2", 443))));
+            assertThatThrownBy(() -> resolver.resolve(target).get()).hasCauseInstanceOf(EndpointAddressRejectedException.class);
+            var other = InetSocketAddress.createUnresolved("other.example", 443);
+            when(delegate.resolveAll(other)).thenReturn(executor.newSucceededFuture(List.of(trusted)));
+            assertThatThrownBy(() -> resolver.resolve(other).get()).hasCauseInstanceOf(EndpointAddressRejectedException.class);
+        } finally { executor.shutdownGracefully(0, 1, java.util.concurrent.TimeUnit.SECONDS).sync(); }
+    }
     @Test void mixedDnsResultsFailAndPublicResultsPassThroughWithoutResolvingAgain() throws Exception {
         var executor = new DefaultEventExecutor();
         @SuppressWarnings("unchecked") var delegate = (AddressResolver<InetSocketAddress>) mock(AddressResolver.class);

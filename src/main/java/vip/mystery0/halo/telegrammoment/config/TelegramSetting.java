@@ -22,6 +22,7 @@ public class TelegramSetting {
     private String botToken = "";
     private String botTokenSecretName = "";
     private String apiEndpoint = "";
+    private String trustedEndpointAddresses = "";
     private boolean debugMode = false;
     private boolean enableLogBuffer = false;
 
@@ -91,6 +92,7 @@ public class TelegramSetting {
             || privateReplyDeleteSeconds < 0 || privateReplyDeleteSeconds > 3600)
             throw new IllegalArgumentException("Reply retention must be 0 to 3600 seconds");
         endpoint();
+        vip.mystery0.halo.telegrammoment.telegram.TrustedEndpointAddresses.parse(trustedEndpointAddresses);
     }
 
     private static void validateId(String id, boolean required) {

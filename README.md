@@ -13,7 +13,11 @@
 
 Token 由 Halo Secret 保存，普通配置只保存引用，管理页不返回凭据。修改 Secret 内容后同样需要重启 Bot。默认不向 Telegram 发送处理结果；需要回复时，在频道或私聊配置中主动开启，并给 Bot 相应发送/删除权限。已有配置的回复开关会保留。
 
-API Endpoint 留空使用 `https://api.telegram.org`。代理端点需同时支持 Bot API 和文件下载路径，可包含由字母、数字、下划线和短横线组成的路径前缀。只支持公网 HTTPS、443 端口；拒绝内网、环回、保留地址及 HTTP，不跟随重定向。不要把 Token 写在端点中。自定义代理能接触 Bot Token 和消息，请选择自己信任的服务。
+API Endpoint 留空使用 `https://api.telegram.org`。代理端点需同时支持 Bot API 和文件下载路径，可包含由字母、数字、下划线和短横线组成的路径前缀。只支持 HTTPS、443 端口，默认仅连接公网地址，不跟随重定向。不要把 Token 写在端点中。自定义代理能接触 Bot Token 和消息，请选择自己信任的服务。
+
+私网或 CGNAT 代理可在“可信端点地址”填写 `proxy.example.com=100.64.0.7`，将域名替换为自己的代理域名。每行或逗号分隔一个规则，最多 32 条，仅精确授权该域名对应的 IP；不支持通配符、CIDR、环回、链路本地或其他保留地址。支持 IPv4 私网、CGNAT 和 IPv6 ULA；证书校验保持启用。所有 DNS 结果都必须是公网或被该域名的规则授权，否则整次连接被拒绝。保存后重启 Bot 生效。
+
+日志出现 `blocked by endpoint address policy` 时，按其中的数字地址检查 DNS 或添加准确的可信代理规则；不要仅因某个地址出现在 DNS 结果中就信任它。
 
 ![管理页面](docs/plans/dashboard/desktop.png)
 

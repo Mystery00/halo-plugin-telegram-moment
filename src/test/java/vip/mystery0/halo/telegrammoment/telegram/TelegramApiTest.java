@@ -66,7 +66,8 @@ class TelegramApiTest {
         assertThatThrownBy(() -> new TelegramApi(settings)).isInstanceOf(IllegalArgumentException.class);
         settings.setApiEndpoint("https://127.0.0.1");
         try (var api = new TelegramApi(settings)) {
-            assertThatThrownBy(api::getMe).isInstanceOf(TelegramApiException.class).hasMessageNotContaining("secret");
+            assertThatThrownBy(api::getMe).isInstanceOf(TelegramApiException.class)
+                .hasMessageContaining("blocked by endpoint address policy").hasMessageNotContaining("secret");
         }
     }
     @Test void transportDiagnosisUsesSafeCategoriesInsteadOfRawExceptionMessages() {
