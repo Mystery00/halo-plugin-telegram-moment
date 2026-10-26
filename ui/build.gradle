@@ -33,5 +33,11 @@ tasks.named('assemble') {
 }
 
 node {
-    download = true
+    // 使用 CI 或 Docker 已准备好的 Node 24 与 pnpm，禁止隐式下载 Node 18。
+    download = false
+    pnpmVersion = '10.12.4'
+}
+
+tasks.named('pnpmInstall') {
+    args = ['--frozen-lockfile']
 }

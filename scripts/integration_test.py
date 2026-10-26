@@ -5,6 +5,7 @@ import http.cookiejar
 import json
 import re
 import time
+import ssl
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -14,10 +15,11 @@ from cryptography.hazmat.primitives.asymmetric import padding
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--credentials', required=True)
-parser.add_argument('--halo', default='http://127.0.0.1:18090')
-parser.add_argument('--mock', default='http://127.0.0.1:18081')
+parser.add_argument('--halo', default='http://127.0.0.1:18092')
+parser.add_argument('--mock', default='https://127.0.0.1:18094')
+parser.add_argument('--ca', default='workplace/store-test/tls/server.crt')
 args = parser.parse_args()
-opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=args.ca)), urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 
 
 def request(path, data=None, method=None, base=None):
@@ -103,7 +105,7 @@ except urllib.error.HTTPError as error:
         raise
     config = {'apiVersion': 'v1alpha1', 'kind': 'ConfigMap', 'metadata': {'name': 'telegram-moment-configmap'}}
 config['data'] = {group: json.dumps(values) for group, values in {
-    'bot': {'botToken': '123:test', 'apiEndpoint': 'http://telegram-moment-mock:8080', 'enableLogBuffer': True},
+    'bot': {'botToken': '123:test', 'apiEndpoint': 'https://telegram-moment-mock', 'enableLogBuffer': True},
     'channel': {'channelEnabled': True, 'channelId': str(chat_id), 'channelReplyEnabled': False, 'channelFilter': 'skip'},
     'private': {'privateEnabled': False}, 'moment': {'momentOwner': owner},
     'storage': {'storagePolicy': 'default-policy', 'mediaDelaySeconds': 2},
@@ -113,6 +115,9 @@ request(path if 'version' in config['metadata'] else '/api/v1alpha1/configmaps',
 status = request(API + '/restart', {}, 'POST')
 assert status['phase'] == 'RUNNING', status
 print('PASS: plugin startup', flush=True)
+migrated = json.loads(request(path)['data']['bot'])
+assert 'botToken' not in migrated and migrated['botTokenSecretName']
+print('PASS: legacy token migrated to Secret reference', flush=True)
 
 first_id = sequence
 update = send(message(first_id, '集成测试：频道消息没有 from'))
@@ -195,4 +200,27 @@ try:
 except urllib.error.HTTPError as error:
     assert error.code in (401, 403)
 print('PASS: anonymous management access denied', flush=True)
+
+# 使用真实 Halo 存储验证失效引用与只读状态接口，再恢复有效配置。
+config = request(path)
+saved_bot = json.loads(config['data']['bot'])
+invalid_bot = dict(saved_bot, botTokenSecretName='missing-test-secret', botToken='123:must-not-fallback')
+config['data']['bot'] = json.dumps(invalid_bot)
+request(path, config, 'PUT')
+status = request(API + '/restart', {}, 'POST')
+assert status['phase'] == 'CONFIG_ERROR' and 'Secret' in status['error']
+version = request(path)['metadata']['version']
+request(API + '/status')
+assert request(path)['metadata']['version'] == version
+print('PASS: invalid Secret reference fails closed and status is read-only', flush=True)
+config = request(path)
+config['data']['bot'] = json.dumps(dict(saved_bot, apiEndpoint='http://telegram-moment-mock'))
+request(path, config, 'PUT')
+assert request(API + '/restart', {}, 'POST')['phase'] == 'CONFIG_ERROR'
+print('PASS: production configuration rejects HTTP endpoint', flush=True)
+config = request(path)
+config['data']['bot'] = json.dumps(saved_bot)
+request(path, config, 'PUT')
+assert request(API + '/restart', {}, 'POST')['phase'] == 'RUNNING'
+request(API + '/stop', {}, 'POST')
 print('Integration checks completed', flush=True)

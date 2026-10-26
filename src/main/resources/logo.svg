@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Telegram Moment">
+  <rect width="128" height="128" rx="28" fill="#0f766e"/>
+  <path d="M30 31h68v49H66L45 99V80H30z" fill="#fff"/>
+  <path d="M43 51h42M43 63h26" fill="none" stroke="#0f766e" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="91" cy="91" r="22" fill="#134e4a"/>
+  <path d="m82 91 6 6 12-13" fill="none" stroke="#99f6e4" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,20 +1,37 @@
 services:
   halo:
-    image: halohub/halo:2.22.14
+    image: halohub/halo:${HALO_VERSION:-2.22.11}
     ports:
-      - "127.0.0.1:18090:8090"
+      - "127.0.0.1:18092:8090"
     volumes:
       - halo-test-data:/root/.halo2
+      - ../workplace/store-test/tls:/test-tls:ro
     environment:
-      JVM_OPTS: -Xmx768m -Xms256m
+      JVM_OPTS: -Xmx768m -Xms256m -Djavax.net.ssl.trustStore=/test-tls/truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit
     command:
-      - --halo.external-url=http://127.0.0.1:18090
+      - --halo.external-url=http://127.0.0.1:18092
+    networks:
+      fixture:
+        ipv4_address: 93.184.216.2
   telegram-moment-mock:
     image: python:3.12-slim
     ports:
-      - "127.0.0.1:18081:8080"
+      - "127.0.0.1:18094:443"
     volumes:
       - .:/scripts:ro
+      - ../workplace/store-test/tls:/test-tls:ro
+    environment:
+      TEST_TLS_CERT: /test-tls/server.crt
+      TEST_TLS_KEY: /test-tls/server.key
+    networks:
+      fixture:
+        ipv4_address: 93.184.216.3
     command: ["python", "/scripts/mock_telegram.py"]
 volumes:
   halo-test-data:
+networks:
+  # 专用桥接网络仅用虚拟凭据模拟公网地址；不连接真实 Telegram。
+  fixture:
+    ipam:
+      config:
+        - subnet: 93.184.216.0/24

@@ -1,0 +1,8 @@
+FROM node:24-bookworm AS node
+FROM gradle:8.14-jdk21
+USER root
+COPY --from=node /usr/local/ /usr/local/
+ENV COREPACK_HOME=/opt/corepack
+RUN corepack enable pnpm && corepack prepare pnpm@10.12.4 --activate && chmod -R a+rX /opt/corepack
+USER gradle
+WORKDIR /workspace

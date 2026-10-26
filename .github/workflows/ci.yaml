@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -10,9 +11,11 @@ on:
 
 jobs:
   ci:
-    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@v3
+    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@v5.0.1
+    permissions:
+      contents: read
     with:
       ui-path: "ui"
-      pnpm-version: 10
-      node-version: 24
-      java-version: 21
+      pnpm-version: "10.12.4"
+      node-version: "24"
+      java-version: "21"

@@ -7,7 +7,6 @@ import lombok.ToString;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import run.halo.app.extension.ConfigMap;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
@@ -19,7 +18,9 @@ public class TelegramSetting {
 
     // --- bot group ---
     @ToString.Exclude
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String botToken = "";
+    private String botTokenSecretName = "";
     private String apiEndpoint = "";
     private boolean debugMode = false;
     private boolean enableLogBuffer = false;
@@ -102,19 +103,15 @@ public class TelegramSetting {
     }
 
     public String endpoint() {
-        String endpoint = apiEndpoint == null || apiEndpoint.isBlank() ? "https://api.telegram.org" : apiEndpoint.trim();
-        try {
-            URI uri = URI.create(endpoint);
-            if (!List.of("https", "http").contains(uri.getScheme()) || uri.getHost() == null
-                || uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null) throw new IllegalArgumentException();
-            return endpoint.replaceAll("/+$", "");
-        } catch (Exception e) { throw new IllegalArgumentException("Invalid API endpoint"); }
+        return vip.mystery0.halo.telegrammoment.telegram.EndpointPolicy.endpoint(apiEndpoint);
     }
 
     public String fingerprint() {
         try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                .digest(new ObjectMapper().writeValueAsBytes(this)));
+            var digest = MessageDigest.getInstance("SHA-256");
+            digest.update(new ObjectMapper().writeValueAsBytes(this));
+            digest.update((byte) 0);
+            return HexFormat.of().formatHex(digest.digest((botToken == null ? "" : botToken).getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) { throw new IllegalStateException("Cannot fingerprint settings"); }
     }
 }

@@ -3,6 +3,8 @@ import base64
 import json
 import threading
 import time
+import ssl
+import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 updates = []
@@ -74,5 +76,9 @@ class Handler(BaseHTTPRequestHandler):
         self.respond({'ok': True, 'result': result})
 
 if __name__ == '__main__':
-    print('Mock Telegram listening on port 8080', flush=True)
-    ThreadingHTTPServer(('0.0.0.0', 8080), Handler).serve_forever()
+    server = ThreadingHTTPServer(('0.0.0.0', 443), Handler)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(os.environ['TEST_TLS_CERT'], os.environ['TEST_TLS_KEY'])
+    server.socket = context.wrap_socket(server.socket, server_side=True)
+    print('Mock Telegram listening with TLS on port 443', flush=True)
+    server.serve_forever()

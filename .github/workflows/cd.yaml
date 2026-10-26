@@ -6,15 +6,45 @@ on:
       - published
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - name: 校验发布版本
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          version="${RELEASE_TAG#v}"
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc)\.(0|[1-9][0-9]*))?$ ]]; then
+            echo 'Release tag must be MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-(alpha|beta|rc).N' >&2
+            exit 1
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+  verify:
+    needs: prepare
+    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-ci.yaml@v5.0.1
+    permissions:
+      contents: read
+    with:
+      ui-path: "ui"
+      pnpm-version: "10.12.4"
+      node-version: "24"
+      java-version: "21"
+      build-args: "-Pversion=${{ needs.prepare.outputs.version }}"
   cd:
-    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-cd.yaml@v3
+    needs: verify
+    uses: halo-sigs/reusable-workflows/.github/workflows/plugin-cd.yaml@v5.0.1
     permissions:
       contents: write
     with:
       ui-path: "ui"
-      pnpm-version: 10
-      node-version: 24
-      java-version: 21
-      # Remove skip-appstore-release and set app-id if you want to release to the App Store
+      pnpm-version: "10.12.4"
+      node-version: "24"
+      java-version: "21"
+      # 首次审核通过后，按 docs/releasing.md 配置应用 ID 和 HALO_PAT。
       skip-appstore-release: true
-      # app-id: app-xyz

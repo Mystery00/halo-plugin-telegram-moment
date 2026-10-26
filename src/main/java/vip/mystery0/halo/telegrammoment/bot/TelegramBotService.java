@@ -14,7 +14,6 @@ import vip.mystery0.halo.telegrammoment.config.TelegramSetting;
 import vip.mystery0.halo.telegrammoment.telegram.TelegramApi;
 import vip.mystery0.halo.telegrammoment.telegram.TelegramApiException;
 import vip.mystery0.halo.telegrammoment.publisher.HaloMomentGateway;
-import run.halo.app.extension.ConfigMap;
 import run.halo.app.core.extension.User;
 import run.halo.app.core.extension.attachment.Policy;
 import java.time.Duration;
@@ -51,7 +50,7 @@ public class TelegramBotService {
         if (workers != null) return;
         phase = "STARTING"; error = "";
         try {
-            var settings = settings();
+            var settings = new vip.mystery0.halo.telegrammoment.config.TelegramSettingsStore(client).load(true);
             logs.setEnabled(settings.isEnableLogBuffer());
             logs.add("INFO", "Bot", "Starting bot: validating configuration and Halo dependencies");
             if (!settings.hasValidToken()) { phase = "UNCONFIGURED"; error = "Bot token is required"; logs.add("WARN", "Bot", error); return; }
@@ -257,7 +256,7 @@ public class TelegramBotService {
         }
         return "update=" + update.path("update_id").asLong() + " type=unsupported";
     }
-    private TelegramSetting settings() { return TelegramSetting.from(client.fetch(ConfigMap.class, "telegram-moment-configmap").block(Duration.ofSeconds(10))); }
+    private TelegramSetting settings() { return new vip.mystery0.halo.telegrammoment.config.TelegramSettingsStore(client).load(false); }
     private static boolean sleep(long millis) {
         try { Thread.sleep(millis); return true; } catch (InterruptedException e) { Thread.currentThread().interrupt(); return false; }
     }

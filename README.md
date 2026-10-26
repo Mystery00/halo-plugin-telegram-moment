@@ -5,15 +5,17 @@
 ## 安装与配置
 
 - Halo **2.22.11 或以上**，Java 21；先安装并启用瞬间 **1.15.0 或以上**。
-- 在 Halo「插件」中上传 `build/libs/plugin-telegram-moment-1.0.0-SNAPSHOT.jar` 并启用。
-- 打开插件配置，填写 Bot Token、发布者的 Halo 用户名、附件存储策略的资源名称。分组可留空。
+- 在 Halo「插件」中上传正式构建的 `plugin-telegram-moment-1.0.0.jar` 并启用。
+- 打开插件配置，在「Bot Token 凭据」中创建或选择 Secret，填写 `token` 键及 Bot Token；再填写发布者的 Halo 用户名、附件存储策略的资源名称。分组可留空。
 - 频道模式下将 Bot 加入频道并授予读取消息所需权限。填写频道 Chat ID 可限定来源；留空接收该 Bot 能收到的所有频道消息。
 - 私聊模式必须填写允许的发送者数字 ID，不能留空或填用户名。普通群、超级群和其他发送者不会发布。
-- 打开「工具 → Telegram Moment」，点击「应用配置并重启」，确认状态为「运行中」。保存配置后需要重启 Bot 才会应用。
+- 打开「工具 → Telegram Moment」，在「更多」中选择「应用配置并重启」，确认状态为「运行中」。保存配置后需要重启 Bot 才会应用。
 
-Token 只在密码输入框填写。默认不向 Telegram 发送处理结果；需要回复时，在频道或私聊配置中主动开启，并给 Bot 相应发送/删除权限。已有配置的回复开关会保留。
+Token 由 Halo Secret 保存，普通配置只保存引用，管理页不返回凭据。修改 Secret 内容后同样需要重启 Bot。默认不向 Telegram 发送处理结果；需要回复时，在频道或私聊配置中主动开启，并给 Bot 相应发送/删除权限。已有配置的回复开关会保留。
 
-API Endpoint 留空使用 `https://api.telegram.org`。代理端点需同时支持 Bot API 和文件下载路径，可以包含路径前缀；不要把 Token 写在端点中。
+API Endpoint 留空使用 `https://api.telegram.org`。代理端点需同时支持 Bot API 和文件下载路径，可包含由字母、数字、下划线和短横线组成的路径前缀。只支持公网 HTTPS、443 端口；拒绝内网、环回、保留地址及 HTTP，不跟随重定向。不要把 Token 写在端点中。自定义代理能接触 Bot Token 和消息，请选择自己信任的服务。
+
+![管理页面](docs/plans/dashboard/desktop.png)
 
 ## 同步规则
 
@@ -46,28 +48,38 @@ API Endpoint 留空使用 `https://api.telegram.org`。代理端点需同时支�
 在项目根目录的 PowerShell 中执行：
 
 ```powershell
-wsl --exec bash /mnt/d/IdeaProjects/halo-plugin-telegram-moment/scripts/build.sh
+wsl --exec bash /mnt/d/IdeaProjects/halo-plugin-telegram-moment/scripts/build.sh '-Pversion=1.0.0'
 ```
 
-其他路径请相应修改。脚本使用 Node 24、pnpm 10.12.4 和 Java 21 的 Gradle 容器，依次执行前端测试、类型检查、打包及后端测试。依赖缓存放在 Docker 卷内。最终 JAR 位于 `build/libs/`。
+其他路径请相应修改。脚本在同一容器中使用 Node 24、pnpm 10.12.4、Java 21 和 Gradle Wrapper 8.14.6，执行完整 `clean build`（前端测试、类型检查、打包及后端测试）。依赖缓存放在 Docker 卷内。最终 JAR 位于 `build/libs/`。发布流程见 [发布清单](docs/releasing.md)。
 
 ## 隔离集成测试
 
-`scripts/mock_telegram.py` 模拟 Telegram 协议，不连接真实 Telegram。**只在专用测试 Halo 使用集成脚本**：它会设置测试配置、创建/编辑/删除测试瞬间并上传测试附件。
+`scripts/mock_telegram.py` 模拟 Telegram HTTPS 协议，不连接真实 Telegram。**只在专用测试 Halo 使用集成脚本**：它会设置测试配置、创建/编辑/删除测试瞬间并上传测试附件。夹具在专用 Docker 桥接网络中模拟公网地址，只使用虚拟凭据；测试证书仅注入测试 Halo 信任库，插件本身没有安全绕过开关。
 
 ```bash
-docker compose -p telegram-moment-test -f scripts/compose.test.yaml up -d
+bash scripts/prepare-test-tls.sh
+docker compose -p telegram-moment-store-test -f scripts/compose.test.yaml up -d
 ```
 
-访问 `http://127.0.0.1:18090` 初始化 Halo，安装瞬间与本插件。将测试管理员凭据写入仓库外 JSON 文件（键为 `username`、`password`），在安装了 Python `cryptography` 的 WSL 中执行：
+访问 `http://127.0.0.1:18092` 初始化 Halo，安装瞬间与本插件。将测试管理员凭据写入仓库外 JSON 文件（键为 `username`、`password`），在安装了 Python `cryptography` 的 WSL 中执行：
 
 ```bash
 python3 scripts/integration_test.py --credentials /path/outside/repo/test-credentials.json
 ```
 
-测试包含无 `from` 频道消息、原位编辑、重复投递、相册成员编辑、删除、标签屏蔽、附件下载失败与手动重试、Bot 重启恢复和匿名访问保护。测试数据保留以便检查；专用容器和数据卷由操作者管理。
+测试包含 Secret 迁移、无 `from` 频道消息、原位编辑、重复投递、相册成员编辑、删除、标签屏蔽、附件下载失败与手动重试、Bot 重启恢复和匿名访问保护。测试结束执行 `docker compose -p telegram-moment-store-test -f scripts/compose.test.yaml down` 停止专用实例，数据卷保留。设置环境变量 `HALO_VERSION` 可切换版本，应使用新的 Compose 项目数据卷验收，不能直接降级已有数据库。
 
 设计、实施计划及实测记录位于 [docs/plans](docs/plans)。真实 Telegram Token 的验证与模拟服务验证分别记录，不以模拟测试代替真实网络验收。
+
+## 隐私、升级与卸载
+
+- 数据流向：Halo 主动向 Telegram（或指定代理）轮询消息、下载媒体；媒体再上传至选定的 Halo 附件存储。开启回复时会向 Telegram 发送处理状态。插件不包含遥测或第三方统计。
+- 存储内容：Halo 保存 Bot Secret、配置、接收游标、消息及相册映射、任务内容、瞬间和附件。消息内容按配置发布为公开瞬间，启用前确认频道和私聊来源范围。
+- 日志：开启页面日志后保留内存缓冲，最多 2 小时/500 条；运行信息也写入 Halo 服务日志，其保存时间由部署环境决定。日志包含消息 ID、任务 ID 和处理结果，不保存完整消息或 Token；关闭实例会丢失页面内存日志。同步记录为支持后续编辑而持续保存，不自动按日志保留期删除。
+- 升级：先备份数据库和附件；旧版明文 Token 在 Bot 启动时迁入 Secret，验证成功后才移除旧字段。失败时 Bot 停止启动并提示检查凭据。旧版程序无法直接使用新引用，降级需要从备份恢复匹配配置。
+- 停用：停止接收，不删除已有瞬间、附件或同步数据。卸载：插件不主动删除用户 Secret 或已发布内容；Halo 对插件扩展的清理由卸载选项决定。需要彻底清理时先备份、停用插件，再通过 Halo 管理界面检查并删除相关瞬间、附件、配置和不再被引用的 Secret。不要删除其他应用共用的凭据。
+- 建议仅为专用 Bot 授予必要频道权限，并限定频道 ID；管理权限不额外授予 Secret 读取权限。
 
 ## 许可证
 

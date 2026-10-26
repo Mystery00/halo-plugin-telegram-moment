@@ -7,13 +7,16 @@ spec:
     - group: bot
       label: Bot 配置
       formSchema:
-        - $formkit: password
-          name: botToken
-          label: Bot Token
+        - $formkit: secret
+          name: botTokenSecretName
+          label: Bot Token 凭据
+          requiredKey: token
+          help: 创建或选择包含 token 键的 Secret，配置中仅保存凭据引用。旧版 Token 将在 Bot 启动时自动迁移。
           required: true
         - $formkit: text
           name: apiEndpoint
           label: API Endpoint（留空使用官方 https://api.telegram.org）
+          help: 仅支持公开 HTTPS 地址和 443 端口，可包含路径前缀；不支持内网、本地 HTTP Bot API 或自动重定向。
         - $formkit: checkbox
           name: debugMode
           label: 调试模式
