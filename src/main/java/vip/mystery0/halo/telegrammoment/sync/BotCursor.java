@@ -14,5 +14,7 @@ public class BotCursor extends AbstractExtension {
     @Data public static class Spec {
         private long nextOffset;
         private String repliesJson = "{}";
+        private String commandsJson = "{}";
+        private String telegramCleanupJson = "{}";
     }
 }

@@ -31,6 +31,7 @@ public class SyncRecord extends AbstractExtension {
         private String mediaJson = "{}";
         private String stagedJson = "{}";
         private String momentName = "";
+        private boolean momentKnown;
         private List<String> cleanup = new ArrayList<>();
     }
 

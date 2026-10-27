@@ -71,25 +71,85 @@ spec:
           label: 自动清理时间（秒，0 表示不自动删除）
           if: "$get(privateReplyEnabled).value"
           value: 3
+    - group: command
+      label: 命令配置
+      formSchema:
+        - $formkit: checkbox
+          name: commandCleanupEnabled
+          label: 成功执行后清理命令消息
+          help: 频道与授权私聊均支持回复原消息发送 /rm 或 /redo。成功执行后删除该条命令；使用提示和失败命令会保留。Bot 需要对应的删除权限。
+          value: true
+        - $formkit: checkbox
+          name: deleteSourceMessages
+          label: 删除瞬间时同时删除 Telegram 原消息
+          help: 默认关闭。开启后，/rm 成功会尝试删除对应的 Telegram 原消息；相册会删除已记录的全部成员。Telegram 删除失败不影响 Halo 删除结果。
+          value: false
     - group: moment
       label: 瞬间配置
       formSchema:
-        - $formkit: text
+        - $formkit: userSelect
           name: momentOwner
-          label: 发布者用户名
-          help: 请输入 Halo 账号的用户名（用户名不存在会导致处理逻辑失败）
+          label: 瞬间发布者
+          placeholder: 请选择 Halo 用户
+          help: 选择新瞬间所属的 Halo 用户；列表显示用户名称，保存后重启 Bot 生效。已有瞬间的发布者不会因消息编辑而改变。
+          autoSelect: false
           required: true
           validation: required
+        - $formkit: select
+          name: momentVisibility
+          label: 新瞬间的可见性
+          value: PUBLIC
+          options:
+            - label: 公开
+              value: PUBLIC
+            - label: 私有
+              value: PRIVATE
+          help: 仅用于新建瞬间；编辑或重做保留 Halo 中已有的可见性。
+          validation: required
+        - $formkit: checkbox
+          name: momentAutoApprove
+          label: 新瞬间自动通过审核
+          help: 关闭后，新瞬间需要在 Halo 中审核；已有瞬间的审核状态会保留。
+          value: true
+        - $formkit: textarea
+          name: momentDefaultTags
+          label: 默认附加标签
+          help: "使用中英文逗号或换行分隔，可带 # 前缀；与消息中的 hashtag 去重合并。最多 64 个标签，每个最多 64 个字符。"
+        - $formkit: textarea
+          name: momentContentPrefix
+          label: 正文前缀
+          help: 作为纯文本独立段落放在消息正文之前，不解析 HTML 或 Markdown；最多 4096 个字符。
+          validation: length:0,4096
+        - $formkit: textarea
+          name: momentContentSuffix
+          label: 正文后缀
+          help: 作为纯文本独立段落放在消息正文之后，不解析 HTML 或 Markdown；最多 4096 个字符。
+          validation: length:0,4096
+        - $formkit: checkbox
+          name: momentIncludeSourceLink
+          label: 附加 Telegram 原消息链接
+          help: 仅为可定位的频道消息附加来源链接，相册链接到首条消息；私聊不添加链接。私有频道链接仍需要访问者具备该频道权限。
+          value: false
     - group: storage
       label: 附件存储
       formSchema:
-        - $formkit: text
+        - $formkit: attachmentPolicySelect
           name: storagePolicy
-          label: 存储策略名称
+          label: 附件存储策略
+          placeholder: 请选择存储策略
+          help: 选择保存 Telegram 媒体的存储策略；可在 Halo 附件管理中创建和维护。
+          autoSelect: false
+          searchable: true
           required: true
-        - $formkit: text
+          validation: required
+        - $formkit: attachmentGroupSelect
           name: storageGroup
-          label: 附件分组名称（留空使用默认）
+          label: 附件分组
+          placeholder: 不指定分组
+          help: 可选，清空后不指定附件分组；可在 Halo 附件管理中创建和维护。
+          autoSelect: false
+          searchable: true
+          clearable: true
         - $formkit: number
           name: mediaDelaySeconds
           label: 媒体组聚合延迟秒数（默认 3）

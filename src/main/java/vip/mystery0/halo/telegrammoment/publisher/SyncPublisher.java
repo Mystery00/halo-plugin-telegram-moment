@@ -40,6 +40,11 @@ public class SyncPublisher {
                 if (existing != null) { name = existing.getMetadata().getName(); break; }
             }
         }
+        if (spec.getAction().equals("PUBLISH")) verifyLegacyAlbumMapping(existing, record);
+        if (existing != null) spec.setMomentKnown(true);
+        // 失败发布也可能留下预分配名称；只有观察到或成功提交过的瞬间才允许幂等删除。
+        if (spec.getAction().equals("DELETE") && existing == null && !spec.isMomentKnown())
+            throw new IllegalArgumentException("No synchronized moment was found for the replied message");
         spec.setMomentName(name);
         // 找回上传成功但还未来得及写入 staged 的附件，覆盖进程中断窗口。
         addCleanup(record, media.owned(record.getMetadata().getName())); save(record);
@@ -90,7 +95,11 @@ public class SyncPublisher {
             }
             for (int attempt = 0; ; attempt++) {
                 var latest = moments.get(name);
-                try { moments.save(build(latest, name, record, settings, prepared)); committed = true; break; }
+                try {
+                    // 上传期间或乐观锁重试时旧相册可能变化，每次提交都重新核实当前内容。
+                    verifyLegacyAlbumMapping(latest, record);
+                    moments.save(build(latest, name, record, settings, prepared)); committed = true; break;
+                }
                 catch (OptimisticLockingFailureException | DataIntegrityViolationException e) { if (attempt == 2) throw e; }
             }
             complete(record, prepared);
@@ -111,6 +120,19 @@ public class SyncPublisher {
         }
     }
 
+    private void verifyLegacyAlbumMapping(Unstructured existing, SyncRecord record) {
+        if (existing == null) return;
+        var annotations = existing.getMetadata().getAnnotations();
+        if (annotations != null && annotations.containsKey(PREFIX + "bot-id")) return;
+        Object oldMedia = Unstructured.getNestedValue(existing.getData(), "spec", "content", "medium").orElse(null);
+        if (!(oldMedia instanceof List<?> items) || items.size() <= 1) return;
+        long knownMedia = record.members().stream().filter(member -> !member.fileId().isBlank()).count();
+        if (knownMedia < items.size()) {
+            throw new IllegalArgumentException("Legacy album mapping is incomplete; original content and attachments were preserved. "
+                + "The complete album must be synchronized before editing or retrying it");
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private Unstructured build(Unstructured old, String name, SyncRecord record, TelegramSetting settings,
         Map<String, MediaUploader.UploadedMedia> uploaded) {
@@ -128,13 +150,18 @@ public class SyncPublisher {
         annotations.put("attachmentNames", Jsons.write(names(uploaded)));
         var spec = (Map<String,Object>) data.computeIfAbsent("spec", ignored -> new LinkedHashMap<>());
         var caption = record.members().stream().filter(m -> !m.text().isBlank()).findFirst().orElse(first);
-        var content = ContentBuilder.build(caption.text(), caption.entities());
-        spec.put("owner", settings.getMomentOwner()); spec.put("visible", "PUBLIC"); spec.put("approved", true);
-        spec.putIfAbsent("approvedTime", Instant.now().toString());
+        var content = PublicationTemplate.build(caption, first, settings);
+        // 默认发布策略仅用于新瞬间，后续同步不得覆盖管理员调整的可见性、审核和归属。
+        if (old == null) {
+            spec.put("owner", settings.getMomentOwner());
+            spec.put("visible", settings.getMomentVisibility());
+            spec.put("approved", settings.isMomentAutoApprove());
+            if (settings.isMomentAutoApprove()) spec.put("approvedTime", Instant.now().toString());
+        }
         spec.put("releaseTime", Instant.ofEpochSecond(Math.max(0, first.date())).toString());
         spec.put("tags", content.tags());
         var contentMap = (Map<String,Object>) spec.computeIfAbsent("content", ignored -> new LinkedHashMap<>());
-        contentMap.put("raw", caption.text()); contentMap.put("html", content.html());
+        contentMap.put("raw", content.raw()); contentMap.put("html", content.html());
         contentMap.put("medium", record.members().stream().filter(m -> !m.fileId().isBlank())
             .map(m -> uploaded.get(mediaKey(m)))
             .map(m -> Map.of("type", m.type(), "url", m.url(), "originType", m.mimeType())).toList());
@@ -146,7 +173,7 @@ public class SyncPublisher {
         unused.addAll(names(readMedia(spec.getStagedJson()))); unused.removeAll(names(uploaded));
         addCleanup(record, unused); spec.setMediaJson(Jsons.write(uploaded)); spec.setStagedJson("{}");
         spec.getCleanup().removeAll(names(uploaded));
-        spec.setState("SUCCEEDED"); spec.setError(""); save(record); cleanup(record);
+        spec.setMomentKnown(true); spec.setState("SUCCEEDED"); spec.setError(""); save(record); cleanup(record);
     }
     public void cleanup(SyncRecord record) {
         // 清理重试时再次读取实际引用，记录保存失败不能导致已提交附件被删除。

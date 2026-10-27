@@ -110,7 +110,7 @@ public class TelegramBotService {
                     if (generation.get() != session) return;
                     String context = updateContext(update);
                     logs.add("INFO", "Receive", "Received " + context);
-                    String outcome = coordinator.accept(id, update, settings);
+                    String outcome = coordinator.accept(id, username, update, settings);
                     logs.add("INFO", "Receive", outcome + " " + context);
                 }
                 if (generation.get() != session) return;
@@ -172,7 +172,8 @@ public class TelegramBotService {
                         record = latest;
                     }
                     if (generation.get() != session) return;
-                    if (succeeded || record.getSpec().getState().equals("FAILED")) reply(id, record, succeeded, settings, transport);
+                    if ((succeeded || record.getSpec().getState().equals("FAILED")) && !coordinator.hasCommand(id, record))
+                        reply(id, record, succeeded, settings, transport);
                 }
                 var records = repository.records(id);
                 pendingCount = records.stream().filter(r -> r.getSpec().getState().equals("PENDING")).count();
@@ -182,12 +183,94 @@ public class TelegramBotService {
                     if (!record.getSpec().getCleanup().isEmpty())
                         publisher.cleanup(record);
                 }
+                processTelegramCleanup(session, id, transport);
+                processCommands(session, id, transport);
+                processTelegramCleanup(session, id, transport);
                 deleteDueReplies(id, transport);
             }
         } catch (Exception e) {
             if (generation.get() == session) logs.add("ERROR", "Worker", safeError(e));
         }
     }
+
+    private void processCommands(long session, long id, TelegramApi transport) {
+        for (var pending : coordinator.commandRequests(id).stream().limit(20).toList()) {
+            if (generation.get() != session || Thread.currentThread().isInterrupted()) return;
+            var request = pending;
+            try {
+                if (request.result().isBlank()) {
+                    var record = repository.get(request.recordName());
+                    var result = commandResult(request, record, id);
+                    if (result == null) continue;
+                    request = coordinator.resolveCommand(id, request, result.text(), result.succeeded());
+                    if (request == null) continue;
+                }
+            } catch (Exception e) {
+                // 存储或队列容量错误保留命令，不消耗 Telegram 发送的重试次数。
+                logs.add("WARN", "Command", "Command result could not be persisted: update=" + request.updateId() + "; " + safeError(e));
+                continue;
+            }
+            try {
+                long sent = transport.reply(request.chatId(), request.messageId(), request.result(), true);
+                if (sent <= 0) throw new TelegramApiException(502, 0);
+                coordinator.completeCommand(id, request, sent);
+                logs.add("INFO", "Command", "Command feedback delivered: update=" + request.updateId() + " chat=" + request.chatId());
+            } catch (Exception e) {
+                if (generation.get() != session || Thread.currentThread().isInterrupted()) return;
+                boolean retryable = !(e instanceof TelegramApiException telegram) || telegram.retryable();
+                int delay = e instanceof TelegramApiException telegram ? telegram.retryAfter() : 0;
+                boolean retry = coordinator.retryCommand(id, request, retryable, delay);
+                logs.add("WARN", "Command", "Command feedback failed: update=" + request.updateId()
+                    + " retry=" + retry + "; Halo result is unchanged; " + safeError(e));
+            }
+        }
+    }
+
+    private CommandResult commandResult(SyncCoordinator.CommandRequest request, SyncRecord record, long bot) {
+        if (record == null || record.getSpec().getBotId() != bot)
+            return new CommandResult("未找到对应的同步记录，请确认回复的是原消息。", false);
+        var spec = record.getSpec();
+        if (spec.getRevision() < request.revision()) return null;
+        if (!spec.getAction().equals(request.action()))
+            return new CommandResult("该命令已被后续操作替代。", false);
+        if (spec.getState().equals("PENDING")) return null;
+        if (spec.getState().equals("FAILED")) {
+            if (spec.getError().contains("No synchronized moment was found"))
+                return new CommandResult("未找到对应瞬间：该消息可能尚未同步，或旧相册缺少成员关联。", false);
+            if (spec.getError().contains("Legacy album mapping is incomplete"))
+                return new CommandResult("旧相册关联不完整，已保留原内容和附件，需要完整相册后再重试。", false);
+            return new CommandResult("命令执行失败，请在 Halo 插件页面查看原因并重试。", false);
+        }
+        if (spec.getState().equals("IGNORED"))
+            return new CommandResult("消息命中屏蔽标签，未重新同步。", false);
+        if (spec.getState().equals("DELETED"))
+            return new CommandResult("对应瞬间已删除（相册按整组处理）。", true);
+        if (spec.getState().equals("SUCCEEDED"))
+            return new CommandResult("原消息已重新同步，保持同一个瞬间。", true);
+        return null;
+    }
+
+    private void processTelegramCleanup(long session, long id, TelegramApi transport) {
+        for (var request : coordinator.cleanupRequests(id).stream().limit(20).toList()) {
+            if (generation.get() != session || Thread.currentThread().isInterrupted()) return;
+            try {
+                transport.deleteMessage(request.chatId(), request.messageId());
+                coordinator.finishCleanup(id, request, false, false, 0);
+                logs.add("INFO", "Command", "Telegram message cleanup completed: chat=" + request.chatId()
+                    + " message=" + request.messageId() + " kind=" + request.kind());
+            } catch (Exception e) {
+                if (generation.get() != session || Thread.currentThread().isInterrupted()) return;
+                boolean retryable = !(e instanceof TelegramApiException telegram) || telegram.retryable();
+                int delay = e instanceof TelegramApiException telegram ? telegram.retryAfter() : 0;
+                boolean retry = coordinator.finishCleanup(id, request, true, retryable, delay);
+                logs.add("WARN", "Command", "Telegram message cleanup failed: chat=" + request.chatId()
+                    + " message=" + request.messageId() + " kind=" + request.kind() + " retry=" + retry
+                    + "; Halo result is unchanged; " + safeError(e));
+            }
+        }
+    }
+
+    private record CommandResult(String text, boolean succeeded) { }
 
     private void reply(long id, SyncRecord record, boolean succeeded, TelegramSetting settings, TelegramApi transport) {
         if (record.members().isEmpty()) return;

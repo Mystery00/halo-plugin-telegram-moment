@@ -92,6 +92,91 @@ class SyncPublisherTest {
         new SyncPublisher(gateway, upload, repo).publish(record, new TelegramSetting(), null);
         assertThat(deleted).containsExactly("legacy-file");
     }
+
+    @Test void incompleteLegacyAlbumKeepsEveryAttachmentWithoutUploadingOrDeleting() {
+        var legacy = legacyMoment(2);
+        documents.put("legacy-moment", legacy);
+        var upload = new MediaUploader() {
+            public UploadedMedia upload(IncomingMessage m, String n, TelegramSetting s, TelegramApi a) { throw new AssertionError("Must not upload"); }
+            public List<String> owned(String record) { throw new AssertionError("Must reject before attachment preparation"); }
+            public void delete(String name) { throw new AssertionError("Must not delete"); }
+        };
+        var record = record("edited first member", "new-file");
+
+        assertThatThrownBy(() -> new SyncPublisher(legacyGateway(), upload, repo).publish(record, new TelegramSetting(), null))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Legacy album mapping is incomplete");
+
+        assertThat(documents).containsOnlyKeys("legacy-moment");
+        assertThat(documents.get("legacy-moment")).isSameAs(legacy);
+        assertThat(legacy.getMetadata().getAnnotations().get("attachmentNames")).isEqualTo("[\"legacy-0\",\"legacy-1\"]");
+        assertThat(Unstructured.getNestedValue(legacy.getData(), "spec", "content", "medium").orElseThrow())
+            .asList().hasSize(2);
+        assertThat(record.getSpec().getMomentName()).isBlank();
+    }
+
+    @Test void legacySingleImageStillUpdatesInPlaceAndCleansReplacedAttachment() {
+        documents.put("legacy-moment", legacyMoment(1));
+        var deleted = new java.util.ArrayList<String>();
+        var upload = new MediaUploader() {
+            public UploadedMedia upload(IncomingMessage m, String n, TelegramSetting s, TelegramApi a) {
+                return new UploadedMedia("replacement", "/replacement.png", "PHOTO", "image/png");
+            }
+            public void delete(String name) { deleted.add(name); }
+        };
+
+        new SyncPublisher(legacyGateway(), upload, repo).publish(record("edited", "new-file"), new TelegramSetting(), null);
+
+        assertThat(documents).containsOnlyKeys("legacy-moment");
+        var updated = documents.get("legacy-moment");
+        assertThat(Unstructured.getNestedValue(updated.getData(), "spec", "content", "raw")).contains("edited");
+        assertThat(updated.getMetadata().getAnnotations().get("attachmentNames")).isEqualTo("[\"replacement\"]");
+        assertThat(deleted).containsExactly("legacy-0");
+    }
+
+    @Test void legacyAlbumAddedDuringUploadCannotBeOverwritten() {
+        documents.put("legacy-moment", legacyMoment(1));
+        var expandedAlbum = legacyMoment(2);
+        var deleted = new java.util.ArrayList<String>();
+        var upload = new MediaUploader() {
+            public UploadedMedia upload(IncomingMessage m, String n, TelegramSetting s, TelegramApi a) {
+                documents.put("legacy-moment", expandedAlbum);
+                return new UploadedMedia("uncommitted-replacement", "/replacement.png", "PHOTO", "image/png");
+            }
+            public void delete(String name) { deleted.add(name); }
+        };
+        var record = record("edited first member", "new-file");
+
+        assertThatThrownBy(() -> new SyncPublisher(legacyGateway(), upload, repo).publish(record, new TelegramSetting(), null))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Legacy album mapping is incomplete");
+
+        assertThat(documents).containsOnlyKeys("legacy-moment");
+        assertThat(documents.get("legacy-moment")).isSameAs(expandedAlbum);
+        assertThat(expandedAlbum.getMetadata().getAnnotations().get("attachmentNames"))
+            .isEqualTo("[\"legacy-0\",\"legacy-1\"]");
+        assertThat(Unstructured.getNestedValue(expandedAlbum.getData(), "spec", "content", "medium").orElseThrow())
+            .asList().hasSize(2);
+        assertThat(deleted).containsExactly("uncommitted-replacement");
+        assertThat(record.getSpec().getStagedJson()).isEqualTo("{}");
+    }
+
+    private Unstructured legacyMoment(int mediaCount) {
+        var attachments = java.util.stream.IntStream.range(0, mediaCount).mapToObj(i -> "legacy-" + i).toList();
+        var medium = attachments.stream().map(name -> Map.of("type", "PHOTO", "url", "/" + name + ".png", "originType", "image/png")).toList();
+        return new Unstructured(Map.of("apiVersion", "moment.halo.run/v1alpha1", "kind", "Moment",
+            "metadata", Map.of("name", "legacy-moment", "annotations", Map.of("chatId", "-100", "messageId", "10", "attachmentNames", Jsons.write(attachments))),
+            "spec", Map.of("owner", "legacy-owner", "visible", "PRIVATE", "approved", false,
+                "content", Map.of("raw", "legacy caption", "html", "<p>legacy caption</p>", "medium", medium))));
+    }
+
+    private MomentGateway legacyGateway() {
+        return new MomentGateway() {
+            public Unstructured get(String name) { return gateway.get(name); }
+            public Unstructured findLegacy(long chat, long message) { return documents.get("legacy-moment"); }
+            public Unstructured save(Unstructured value) { return gateway.save(value); }
+            public void delete(Unstructured value) { gateway.delete(value); }
+        };
+    }
+
     private final MemoryRepository repo = new MemoryRepository();
     private final Map<String, Unstructured> documents = new HashMap<>();
     private final MomentGateway gateway = new MomentGateway() {
@@ -125,6 +210,111 @@ class SyncPublisherTest {
         assertThat(documents).hasSize(1);
         assertThat(documents.get(name).getData().get("status")).isEqualTo(Map.of("permalink", "/moments/kept"));
         assertThat(Unstructured.getNestedValue(documents.get(name).getData(), "spec", "content", "raw")).contains("edited");
+    }
+
+    @Test void newMomentsUseConfiguredVisibilityAndApprovalDefaults() {
+        var settings = new TelegramSetting(); settings.setMomentOwner("configured-owner");
+        settings.setMomentVisibility("PRIVATE"); settings.setMomentAutoApprove(false);
+        new SyncPublisher(gateway, failingUpload, repo).publish(record("pending review", ""), settings, null);
+
+        var data = documents.get("telegram-tm-test").getData();
+        assertThat(Unstructured.getNestedValue(data, "spec", "owner")).contains("configured-owner");
+        assertThat(Unstructured.getNestedValue(data, "spec", "visible")).contains("PRIVATE");
+        assertThat(Unstructured.getNestedValue(data, "spec", "approved")).contains(false);
+        assertThat(Unstructured.getNestedValue(data, "spec", "approvedTime")).isEmpty();
+        assertThat(repo.get("tm-test").getSpec().isMomentKnown()).isTrue();
+    }
+
+    @Test void editingCannotRepublishPrivateUnapprovedContentOrChangeOwner() {
+        var settings = new TelegramSetting(); settings.setMomentOwner("original-owner");
+        settings.setMomentVisibility("PRIVATE"); settings.setMomentAutoApprove(false);
+        var publisher = new SyncPublisher(gateway, failingUpload, repo);
+        var record = record("first", ""); publisher.publish(record, settings, null);
+
+        settings.setMomentOwner("new-default-owner"); settings.setMomentVisibility("PUBLIC"); settings.setMomentAutoApprove(true);
+        record.getSpec().setRevision(3); record.members(record("edited", "").members());
+        publisher.publish(record, settings, null);
+
+        var data = documents.get("telegram-tm-test").getData();
+        assertThat(Unstructured.getNestedValue(data, "spec", "owner")).contains("original-owner");
+        assertThat(Unstructured.getNestedValue(data, "spec", "visible")).contains("PRIVATE");
+        assertThat(Unstructured.getNestedValue(data, "spec", "approved")).contains(false);
+        assertThat(Unstructured.getNestedValue(data, "spec", "approvedTime")).isEmpty();
+        assertThat(Unstructured.getNestedValue(data, "spec", "content", "raw")).contains("edited");
+    }
+
+    @Test void editingKeepsExistingApprovalTimestampWhenDefaultsChange() {
+        var publisher = new SyncPublisher(gateway, failingUpload, repo);
+        var settings = new TelegramSetting();
+        var record = record("first", ""); publisher.publish(record, settings, null);
+        var approvedTime = Unstructured.getNestedValue(documents.get("telegram-tm-test").getData(), "spec", "approvedTime").orElseThrow();
+
+        settings.setMomentAutoApprove(false);
+        record.getSpec().setRevision(3); record.members(record("edited", "").members());
+        publisher.publish(record, settings, null);
+
+        var data = documents.get("telegram-tm-test").getData();
+        assertThat(Unstructured.getNestedValue(data, "spec", "approved")).contains(true);
+        assertThat(Unstructured.getNestedValue(data, "spec", "approvedTime")).contains(approvedTime);
+    }
+
+    @Test void unknownDeleteRemainsAnExplicitFailureOnRetry() {
+        var publisher = new SyncPublisher(gateway, failingUpload, repo);
+        var record = record("", ""); record.getSpec().setAction("DELETE");
+        repo.save(record);
+        for (int attempt = 0; attempt < 2; attempt++) {
+            var retry = repo.get("tm-test");
+            assertThatThrownBy(() -> publisher.publish(retry, new TelegramSetting(), null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("No synchronized moment was found for the replied message");
+            assertThat(repo.get("tm-test").getSpec().getMomentName()).isBlank();
+            assertThat(repo.get("tm-test").getSpec().isMomentKnown()).isFalse();
+        }
+        assertThat(repo.get("tm-test").getSpec().getState()).isNotEqualTo("DELETED");
+    }
+
+    @Test void preallocatedNameFromFailedPublishDoesNotMakeUnknownDeleteSuccessful() {
+        var record = record("", ""); record.getSpec().setAction("DELETE");
+        record.getSpec().setMomentName("telegram-tm-test");
+        assertThatThrownBy(() -> new SyncPublisher(gateway, failingUpload, repo).publish(record, new TelegramSetting(), null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("No synchronized moment was found for the replied message");
+    }
+
+    @Test void deletingAKnownMomentIsIdempotentEvenAfterItDisappears() {
+        var publisher = new SyncPublisher(gateway, failingUpload, repo);
+        var settings = new TelegramSetting();
+        var record = record("first", ""); publisher.publish(record, settings, null);
+        record.getSpec().setAction("DELETE"); record.getSpec().setRevision(3); record.getSpec().setState("PENDING");
+        publisher.publish(record, settings, null);
+        assertThat(documents).isEmpty();
+        assertThat(record.getSpec().getState()).isEqualTo("DELETED");
+
+        record.getSpec().setState("PENDING"); publisher.publish(record, settings, null);
+        assertThat(record.getSpec().getState()).isEqualTo("DELETED");
+    }
+
+    @Test void interruptedDeletionRemembersLegacyMomentBeforeItDisappears() {
+        var record = record("", ""); record.getSpec().setAction("DELETE");
+        documents.put("legacy-moment", new Unstructured(Map.of("apiVersion", "moment.halo.run/v1alpha1", "kind", "Moment",
+            "metadata", Map.of("name", "legacy-moment", "annotations", Map.of("attachmentNames", "[]")))));
+        var interruptingGateway = new MomentGateway() {
+            public Unstructured get(String name) { return gateway.get(name); }
+            public Unstructured findLegacy(long chat, long message) { return documents.get("legacy-moment"); }
+            public Unstructured save(Unstructured value) { return gateway.save(value); }
+            public void delete(Unstructured value) {
+                gateway.delete(value);
+                throw new IllegalStateException("Response lost after delete");
+            }
+        };
+        assertThatThrownBy(() -> new SyncPublisher(interruptingGateway, failingUpload, repo).publish(record, new TelegramSetting(), null))
+            .hasMessage("Response lost after delete");
+        assertThat(documents).isEmpty();
+
+        var retry = repo.get("tm-test");
+        new SyncPublisher(gateway, failingUpload, repo).publish(retry, new TelegramSetting(), null);
+        assertThat(retry.getSpec().getState()).isEqualTo("DELETED");
+        assertThat(retry.getSpec().isMomentKnown()).isTrue();
     }
 
     @Test void failedNewAttachmentKeepsOldContent() {

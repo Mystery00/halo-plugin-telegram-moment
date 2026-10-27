@@ -9,6 +9,26 @@ class MessageParserTest {
     private final ObjectMapper json = new ObjectMapper();
     private final TelegramSetting settings = new TelegramSetting();
 
+    @Test void channelUsernameSurvivesPersistenceAndRevisionChanges() throws Exception {
+        var parsed = MessageParser.parse(json.readTree("""
+            {"message_id":12,"chat":{"id":-1001234567890,"type":"channel","username":"Public_Channel"},
+             "text":"hello","date":123}
+            """), settings).orElseThrow().withUpdate(42);
+        var restored = json.readValue(json.writeValueAsString(parsed), IncomingMessage.class);
+        assertThat(restored.chatUsername()).isEqualTo("Public_Channel");
+        assertThat(restored.updateId()).isEqualTo(42);
+    }
+
+    @Test void oldStoredMessagesWithoutUsernameRemainReadable() throws Exception {
+        var restored = json.readValue("""
+            {"chatId":-1001234567890,"messageId":12,"date":123,"chatType":"channel","albumId":"",
+             "text":"hello","entities":null,"fileId":"","fileUniqueId":"","mediaType":"","unsupported":"","updateId":1}
+            """, IncomingMessage.class);
+        assertThat(restored.text()).isEqualTo("hello");
+        assertThat(restored.withUpdate(2).chatUsername()).isNull();
+        assertThat(restored.withUpdate(2).updateId()).isEqualTo(2);
+    }
+
     @Test void channelWithoutFromIsAccepted() throws Exception {
         var message = json.readTree("""
             {"message_id":12,"chat":{"id":-100,"type":"channel"},"text":"hello","date":123}
