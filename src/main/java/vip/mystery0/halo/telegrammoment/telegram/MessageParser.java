@@ -60,7 +60,7 @@ public final class MessageParser {
         return Optional.of(new IncomingMessage(chat, message.path("message_id").asLong(), message.path("date").asLong(), type,
             message.path("media_group_id").asText(""), text.length() <= 65536 ? text : "", entities,
             file == null ? "" : file.path("file_id").asText(), file == null ? "" : file.path("file_unique_id").asText(),
-            media, unsupported, 0));
+            media, unsupported, 0, type.equals("channel") ? message.path("chat").path("username").asText("") : ""));
     }
     public static boolean blocked(IncomingMessage message, TelegramSetting settings) {
         if (!message.chatType().equals("channel")) return false;

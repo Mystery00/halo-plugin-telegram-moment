@@ -73,10 +73,15 @@ public class TelegramApi implements AutoCloseable {
         } catch (IOException e) { throw new TelegramApiException(0, 0); }
     }
     public long reply(long chat, long message, String text) {
-        return call("sendMessage", Map.of("chat_id", chat, "text", text, "disable_notification", true,
-            "reply_parameters", Map.of("message_id", message))).path("message_id").asLong();
+        return reply(chat, message, text, false);
     }
-    public void deleteReply(long chat, long message) { call("deleteMessage", Map.of("chat_id", chat, "message_id", message)); }
+    public long reply(long chat, long message, String text, boolean allowWithoutReply) {
+        return call("sendMessage", Map.of("chat_id", chat, "text", text, "disable_notification", true,
+            "reply_parameters", Map.of("message_id", message, "allow_sending_without_reply", allowWithoutReply)))
+            .path("message_id").asLong();
+    }
+    public void deleteMessage(long chat, long message) { call("deleteMessage", Map.of("chat_id", chat, "message_id", message)); }
+    public void deleteReply(long chat, long message) { deleteMessage(chat, message); }
 
     private JsonNode call(String method, Map<String, Object> payload) {
         try {

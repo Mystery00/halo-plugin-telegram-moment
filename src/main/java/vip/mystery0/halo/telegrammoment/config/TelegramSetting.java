@@ -39,8 +39,18 @@ public class TelegramSetting {
     private boolean privateReplyEnabled = false;
     private int privateReplyDeleteSeconds = 3;
 
+    // --- command group ---
+    private boolean commandCleanupEnabled = true;
+    private boolean deleteSourceMessages = false;
+
     // --- moment group ---
     private String momentOwner = "";
+    private String momentVisibility = "PUBLIC";
+    private boolean momentAutoApprove = true;
+    private String momentDefaultTags = "";
+    private String momentContentPrefix = "";
+    private String momentContentSuffix = "";
+    private boolean momentIncludeSourceLink = false;
 
     // --- storage group ---
     private String storagePolicy = "";
@@ -64,11 +74,22 @@ public class TelegramSetting {
                 .toList();
     }
 
+    /** 默认标签支持中英文逗号或换行；与消息 hashtag 一样不保存前导 #。 */
+    public List<String> getMomentDefaultTagList() {
+        if (momentDefaultTags == null || momentDefaultTags.isBlank()) return List.of();
+        return Arrays.stream(momentDefaultTags.split("[,，\\r\\n]+"))
+            .map(String::trim)
+            .map(tag -> tag.startsWith("#") ? tag.substring(1).trim() : tag)
+            .filter(tag -> !tag.isEmpty())
+            .distinct()
+            .toList();
+    }
+
     public static TelegramSetting from(ConfigMap config) {
         if (config == null || config.getData() == null) return new TelegramSetting();
         var mapper = new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         var combined = new LinkedHashMap<String, Object>();
-        for (String group : List.of("bot", "channel", "private", "moment", "storage")) {
+        for (String group : List.of("bot", "channel", "private", "command", "moment", "storage")) {
             String value = config.getData().get(group);
             if (value == null || value.isBlank()) continue;
             try { combined.putAll(mapper.readValue(value, Map.class)); }
@@ -83,6 +104,13 @@ public class TelegramSetting {
         if (!botToken.matches("[0-9]+:[A-Za-z0-9_-]+")) throw new IllegalArgumentException("Invalid bot token format");
         if (momentOwner == null || momentOwner.isBlank()) throw new IllegalArgumentException("Moment owner is required");
         if (storagePolicy == null || storagePolicy.isBlank()) throw new IllegalArgumentException("Storage policy is required");
+        if (!List.of("PUBLIC", "PRIVATE").contains(momentVisibility == null ? "" : momentVisibility))
+            throw new IllegalArgumentException("Moment visibility must be PUBLIC or PRIVATE");
+        if (getMomentDefaultTagList().size() > 64 || getMomentDefaultTagList().stream().anyMatch(tag -> tag.length() > 64))
+            throw new IllegalArgumentException("Default tags support at most 64 tags of 64 characters each");
+        if (momentContentPrefix != null && momentContentPrefix.length() > 4096
+            || momentContentSuffix != null && momentContentSuffix.length() > 4096)
+            throw new IllegalArgumentException("Moment prefix and suffix must each be at most 4096 characters");
         validateId(channelId, false);
         validateId(privateSenderId, privateEnabled);
         if (privateEnabled && Long.parseLong(privateSenderId.trim()) <= 0)
