@@ -31,7 +31,7 @@ README 包含功能、使用条件、安装配置、命令、常见问题及必�
 | 问题反馈 | https://github.com/Mystery00/halo-plugin-telegram-moment/issues |
 | 待上传安装包 | `build/libs/plugin-telegram-moment-1.1.0.jar` |
 
-Logo 与封面图本轮不处理，等待用户后续安排。实际必填项、图片规格和字段长度以市场开发者控制台为准。
+Logo 已更新为 [PNG 图标](../src/main/resources/logo.png)，插件配置使用同一资源，可作为市场图标上传素材。图标由 OpenAI 图像生成工具制作，设计与素材来源见 [Logo 设计记录](plans/2026-10-27-plugin-logo.md)。封面图仍待安排；实际必填项、图片规格和字段长度以市场开发者控制台为准。
 
 ## 1.1.0 版本说明
 
@@ -46,18 +46,20 @@ Logo 与封面图本轮不处理，等待用户后续安排。实际必填项、
 
 2026-10-27 使用 WSL Docker 执行 `bash scripts/build.sh '-Pversion=1.1.0'` 完整构建通过：后端 109 项测试（0 失败、0 错误、0 跳过），前端 11 项测试、类型检查与打包通过。
 
-已检查 JAR 内版本为 `1.1.0`、显示名称为「Telegram 瞬间同步」、内部 ID 为 `telegram-moment`，并包含图标及前端 JS/CSS。该次构建产物的 SHA-256：
+同日替换新 Logo 后再次完整构建通过。已检查 JAR 内版本为 `1.1.0`、显示名称为「Telegram 瞬间同步」、内部 ID 为 `telegram-moment`，图标配置指向 `logo.png`，PNG 与仓库源文件一致，包含前端 JS/CSS，不再包含旧 `logo.svg`。更新图标后产物的 SHA-256：
 
 ```text
-8bc14115099b60058acfa5f7ff4a306fdcf2ea39931735c1c4e13a8870925f63
+0c0bc415792301338ea69899b16b2899b323076d71e7ca71012d39231a90ea2d
 ```
+
+该哈希对应替换 Logo 后、修改工具菜单图标前的构建。菜单现已改用纸飞机图标且前端构建通过；上传前需重新生成完整 JAR 并更新校验值。
 
 默认开发版本为 `1.1.0-SNAPSHOT`，待上传包通过 `-Pversion=1.1.0` 注入版本号。构建不代表已发布；此安装包尚未做安装升级实测。局域网预览实例仍运行 `1.1.0-rc.1`，未被本次文档修改覆盖。
 
 ## 正式发布前待办
 
 - 记录用户创建的真实 `app-…` ID，不使用内部插件 ID 或虚构占位值代替。
-- 完成用户安排的 Logo、封面图及当前版本真实页面截图；隐藏凭据、私人频道与用户信息，不将历史截图冒充当前页面。
+- 上传已完成的 PNG Logo，补齐封面图及当前版本真实页面截图；隐藏凭据、私人频道与用户信息，不将历史截图冒充当前页面。
 - 处理集成测试旧断言问题并完成剩余验收，见 [本地验证记录](plans/2026-10-27-pr1-windows-validation.md)。用户确认配置页面没有问题，不等于市场审核或所有运行边界已通过。
 - 本次保留 `.github/workflows/cd.yaml` 的 `skip-appstore-release: true`，不创建 tag、GitHub Release 或提交市场审核。
 - 如后续授权自动发布，再配置真实 app-id；由用户在 GitHub Actions Secret 中保存最小权限 `HALO_PAT`，不要在聊天或仓库中粘贴 PAT。

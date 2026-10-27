@@ -1,5 +1,7 @@
 # Telegram 瞬间同步
 
+<img src="src/main/resources/logo.png" alt="Telegram 瞬间同步插件图标" width="112" height="112" />
+
 将 Telegram 频道或授权私聊消息同步为 Halo 瞬间，支持图文相册、消息编辑同步、删除与重做命令，以及可见性、标签等发布设置。
 
 ## 功能

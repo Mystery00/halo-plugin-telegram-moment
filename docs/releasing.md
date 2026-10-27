@@ -18,7 +18,7 @@ Get-FileHash build/libs/plugin-telegram-moment-1.1.0.jar -Algorithm SHA256
 ## 发布前检查
 
 - [ ] 工作区提交并推送，目标提交的 GitHub CI 通过。
-- [ ] 使用正式版本参数构建，检查 JAR 内的 `plugin.yaml` 版本、`logo.svg`、`console/main.js`、`console/style.css`。
+- [ ] 使用正式版本参数构建，检查 JAR 内的 `plugin.yaml` 版本、`logo.png`、`console/main.js`、`console/style.css`。
 - [ ] 在最低支持版本和当前稳定 Halo 中安装；安装瞬间依赖，检查启停、配置、管理权限和卸载。
 - [ ] 检查 Secret 迁移、无效引用和公网 HTTPS 代理；参考本轮验证记录，区分模拟协议与真实 Telegram 验证。
 - [ ] 整理 [版本说明](../CHANGELOG.md)，确认 README、隐私说明、兼容性和截图与实际版本一致。
@@ -28,7 +28,7 @@ Get-FileHash build/libs/plugin-telegram-moment-1.1.0.jar -Algorithm SHA256
 
 1. 申请 Halo 应用市场开发者，创建插件应用，记录真实的 `app-…` ID。
 2. 填写应用简介、GPL-3.0 许可、兼容性、仓库与问题反馈链接、使用说明和数据流向。
-3. 上传正式 JAR 和插件图标。图标是本仓库原创 SVG，同仓库 GPL-3.0；未沿用 Halo 模板品牌图标。
+3. 上传正式 JAR 和 [插件图标](../src/main/resources/logo.png)。图标使用 OpenAI 图像生成工具制作，随仓库按 GPL-3.0 分发；素材说明见 [Logo 设计记录](plans/2026-10-27-plugin-logo.md)。不是 Telegram 或 Halo 官方品牌标识。
 4. 使用真实页面截图，例如 [桌面管理页](plans/dashboard/desktop.png) 和 [移动端日志](plans/dashboard/mobile-logs.png)。提交前复查截图是否包含站点或频道信息；`reference.png` 是设计概念稿，不可作为功能截图。
 5. 创建首个版本草稿，人工提交审核，处理平台反馈。仓库内检查通过不代表市场审核通过。
 

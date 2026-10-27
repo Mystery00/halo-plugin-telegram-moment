@@ -1,5 +1,5 @@
 import { definePlugin } from '@halo-dev/ui-shared'
-import { IconPlug } from '@halo-dev/components'
+import TelegramIcon from '~icons/ri/telegram-line'
 import { markRaw } from 'vue'
 import HomeView from './views/HomeView.vue'
 
@@ -19,7 +19,7 @@ export default definePlugin({
           menu: {
             name: 'Telegram 瞬间同步',
             group: '工具',
-            icon: markRaw(IconPlug),
+            icon: markRaw(TelegramIcon),
             priority: 0,
           },
         },
