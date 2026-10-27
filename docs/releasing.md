@@ -1,6 +1,6 @@
 # 发布与应用市场提交
 
-本文件是仓库发布清单，不能替代平台审核。当前尚未创建市场应用，CI/CD 保持 `skip-appstore-release: true`。
+本文件是仓库发布清单，不能替代平台审核。当前准备版本为 **1.1.0**，显示名称为 **Telegram 瞬间同步**，内部插件 ID 保持 `telegram-moment`。用户已创建市场应用，真实 app-id 待记录，CI/CD 保持 `skip-appstore-release: true`；仅准备安装包与资料，不创建 tag、GitHub Release 或提交市场审核。首次上架可填写的资料见 [应用市场资料](appstore.md)。
 
 本轮已完成的本地构建、兼容性与安全验证见 [验证记录](plans/2026-10-26-store-release-validation.md)。下列清单用于每次正式发布时复核。
 
@@ -9,8 +9,8 @@
 使用 Java 21、Node 24、pnpm 10.12.4 和仓库 Gradle Wrapper 8.14.6。WSL Docker 与 Actions 均执行完整 `clean build`，包括 Java 测试、UI 测试、类型检查和打包。DevTools 使用 0.6.2；运行 API 基线保留 Halo 2.22.11，避免引入模板的 SNAPSHOT。
 
 ```powershell
-wsl --exec bash /mnt/d/IdeaProjects/halo-plugin-telegram-moment/scripts/build.sh '-Pversion=1.0.0'
-Get-FileHash build/libs/plugin-telegram-moment-1.0.0.jar -Algorithm SHA256
+wsl --exec bash /mnt/d/IdeaProjects/halo-plugin-telegram-moment/scripts/build.sh '-Pversion=1.1.0'
+Get-FileHash build/libs/plugin-telegram-moment-1.1.0.jar -Algorithm SHA256
 ```
 
 版本参数必须加引号，避免 Windows PowerShell 拆分参数。日常构建默认 SNAPSHOT；发布通过 `-Pversion` 注入版本，不修改源文件。发布 tag 支持 `v1.0.0`、`1.0.0`、`v1.0.0-rc.1` 等，预发布仅接受 alpha/beta/rc 数字序号。

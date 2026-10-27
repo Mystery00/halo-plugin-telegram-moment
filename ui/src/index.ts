@@ -13,11 +13,11 @@ export default definePlugin({
         name: 'TelegramMoment',
         component: HomeView,
         meta: {
-          title: 'Telegram Moment',
+          title: 'Telegram 瞬间同步',
           searchable: true,
           permissions: ['plugin:telegram-moment:manage'],
           menu: {
-            name: 'Telegram Moment',
+            name: 'Telegram 瞬间同步',
             group: '工具',
             icon: markRaw(IconPlug),
             priority: 0,

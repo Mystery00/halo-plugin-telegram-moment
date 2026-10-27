@@ -14,7 +14,7 @@ spec:
   homepage: https://github.com/Mystery00/halo-plugin-telegram-moment#readme
   repo: https://github.com/Mystery00/halo-plugin-telegram-moment
   issues: https://github.com/Mystery00/halo-plugin-telegram-moment/issues
-  displayName: "Telegram Moment"
+  displayName: "Telegram 瞬间同步"
   description: "将 Telegram 频道/私聊消息自动发布为 Halo 瞬间"
   settingName: "telegram-moment-setting"
   configMapName: "telegram-moment-configmap"
