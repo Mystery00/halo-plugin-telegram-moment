@@ -12,6 +12,18 @@
 - **发布设置**：配置公开或私有、自动审核、默认标签、正文前后缀及频道来源链接。
 - **管理与排错**：选择发布用户和附件存储位置，查看运行日志、失败任务并手动重试。
 
+## 界面预览
+
+以下截图来自 1.1.0 的真实 Halo 后台，测试账号信息已遮盖。
+
+**运行状态**
+
+![Telegram 瞬间同步运行状态](https://raw.githubusercontent.com/Mystery00/halo-plugin-telegram-moment/main/docs/screenshots/v1.1.0/runtime-status.png)
+
+**插件配置**
+
+![Telegram 瞬间同步插件配置](https://raw.githubusercontent.com/Mystery00/halo-plugin-telegram-moment/main/docs/screenshots/v1.1.0/plugin-configuration.png)
+
 ## 使用条件
 
 - Halo **2.22.11 或以上**，已安装并启用「瞬间」插件 **1.15.0 或以上**。
@@ -79,4 +91,8 @@
 
 [详细使用说明](https://github.com/Mystery00/halo-plugin-telegram-moment/blob/main/docs/usage.md) · [更新日志](https://github.com/Mystery00/halo-plugin-telegram-moment/blob/main/CHANGELOG.md) · [问题反馈](https://github.com/Mystery00/halo-plugin-telegram-moment/issues) · [开发文档](https://github.com/Mystery00/halo-plugin-telegram-moment/blob/main/docs/development.md)
 
-[GPL-3.0](https://github.com/Mystery00/halo-plugin-telegram-moment/blob/main/LICENSE) © Mystery0
+## 许可证
+
+本项目使用 **GPL-3.0**（GNU General Public License version 3），与插件制品声明一致。完整条款见 [LICENSE](https://github.com/Mystery00/halo-plugin-telegram-moment/blob/main/LICENSE)，素材来源与许可说明见 [许可证说明](https://github.com/Mystery00/halo-plugin-telegram-moment/blob/main/docs/license.md)。
+
+© Mystery0
